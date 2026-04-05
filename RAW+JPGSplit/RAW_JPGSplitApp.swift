@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Photos
 
 @main
 struct RAW_JPGSplitApp: App {
