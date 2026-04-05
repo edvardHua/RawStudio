@@ -8,14 +8,28 @@
 import SwiftUI
 
 struct ContentView: View {
+    @State private var manager = PhotoLibraryManager()
+
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        Group {
+            switch manager.permissionStatus {
+            case .notDetermined:
+                ProgressView("Requesting access...")
+                    .task {
+                        await manager.requestPermission()
+                    }
+            case .authorized:
+                GalleryView(manager: manager)
+                    .task {
+                        await manager.fetchPairedAssets()
+                    }
+            case .denied:
+                PermissionDeniedView()
+            }
         }
-        .padding()
+        .onAppear {
+            manager.checkPermission()
+        }
     }
 }
 
