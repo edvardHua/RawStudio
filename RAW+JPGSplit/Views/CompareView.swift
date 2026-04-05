@@ -10,6 +10,8 @@ struct CompareView: View {
     @State private var jpgImage: UIImage?
     @State private var rawImage: UIImage?
     @State private var isLoadingImages = true
+    @State private var isProcessing = false
+    @State private var processingMessage = ""
     @State private var zoomState = ZoomState()
     @State private var showToast = false
     @State private var toastMessage = ""
@@ -37,46 +39,71 @@ struct CompareView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            if isLoadingImages {
-                ProgressView("Loading images...")
+        ZStack {
+            VStack(spacing: 0) {
+                if isLoadingImages {
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .scaleEffect(1.2)
+                        Text("Downloading from iCloud...")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let jpg = jpgImage, let raw = rawImage {
-                compareContent(jpg: jpg, raw: raw)
+                } else if let jpg = jpgImage, let raw = rawImage {
+                    compareContent(jpg: jpg, raw: raw)
+                }
             }
-        }
-        .navigationTitle("\(currentIndex + 1) / \(pairs.count)")
-        .navigationBarTitleDisplayMode(.inline)
-        .safeAreaInset(edge: .bottom) {
-            if currentPair != nil && !isLoadingImages {
-                ActionBarView(
-                    onKeepJPG: { performAction(.keepJPG) },
-                    onKeepRAW: { performAction(.keepRAW) },
-                    onSplit: { performAction(.split) }
-                )
+            .navigationTitle("\(currentIndex + 1) / \(pairs.count)")
+            .navigationBarTitleDisplayMode(.inline)
+            .safeAreaInset(edge: .bottom) {
+                if currentPair != nil && !isLoadingImages && !isProcessing {
+                    ActionBarView(
+                        onKeepJPG: { performAction(.keepJPG) },
+                        onKeepRAW: { performAction(.keepRAW) },
+                        onSplit: { performAction(.split) }
+                    )
+                }
             }
-        }
-        .toast(message: toastMessage, isPresented: $showToast)
-        .alert("Error", isPresented: $showError) {
-            Button("OK") {}
-        } message: {
-            Text(errorMessage ?? "An unknown error occurred.")
-        }
-        .gesture(
-            DragGesture(minimumDistance: 50)
-                .onEnded { value in
-                    if zoomState.scale <= 1.0 {
-                        if value.translation.width < -50 && currentIndex < pairs.count - 1 {
-                            navigateTo(currentIndex + 1)
-                        } else if value.translation.width > 50 && currentIndex > 0 {
-                            navigateTo(currentIndex - 1)
+            .toast(message: toastMessage, isPresented: $showToast)
+            .alert("Error", isPresented: $showError) {
+                Button("OK") {}
+            } message: {
+                Text(errorMessage ?? "An unknown error occurred.")
+            }
+            .gesture(
+                DragGesture(minimumDistance: 50)
+                    .onEnded { value in
+                        if zoomState.scale <= 1.0 && !isProcessing {
+                            if value.translation.width < -50 && currentIndex < pairs.count - 1 {
+                                navigateTo(currentIndex + 1)
+                            } else if value.translation.width > 50 && currentIndex > 0 {
+                                navigateTo(currentIndex - 1)
+                            }
                         }
                     }
+            )
+            .task {
+                await loadImages()
+            }
+
+            // Processing overlay — covers content but NOT navigation bar
+            if isProcessing {
+                Color.black.opacity(0.3)
+                    .allowsHitTesting(true)
+
+                VStack(spacing: 16) {
+                    ProgressView()
+                        .scaleEffect(1.2)
+                    Text(processingMessage)
+                        .font(.subheadline)
+                        .foregroundStyle(.primary)
                 }
-        )
-        .task {
-            await loadImages()
+                .padding(32)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+            }
         }
+        .navigationBarBackButtonHidden(isProcessing)
     }
 
     @ViewBuilder
@@ -129,10 +156,19 @@ struct CompareView: View {
     }
 
     private func performAction(_ action: SplitAction) {
-        guard let pair = currentPair else { return }
+        guard let pair = currentPair, !isProcessing else { return }
         Task {
+            isProcessing = true
+            switch action {
+            case .keepJPG: processingMessage = "Saving JPG..."
+            case .keepRAW: processingMessage = "Saving RAW..."
+            case .split: processingMessage = "Splitting photos..."
+            }
+
             do {
                 try await manager.performAction(action, on: pair)
+                isProcessing = false
+
                 let actionLabel: String
                 switch action {
                 case .keepJPG: actionLabel = "Kept JPG"
@@ -146,6 +182,7 @@ struct CompareView: View {
                 try? await Task.sleep(for: .seconds(1.5))
                 moveToNextOrDismiss()
             } catch {
+                isProcessing = false
                 errorMessage = error.localizedDescription
                 showError = true
             }
@@ -164,6 +201,7 @@ struct CompareView: View {
     }
 
     private func navigateTo(_ index: Int) {
+        guard !isProcessing else { return }
         currentIndex = index
         Task {
             await loadImages()
