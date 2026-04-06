@@ -19,7 +19,6 @@ enum SplitAction {
 enum SplitError: LocalizedError {
     case extractionFailed(String)
     case writeFailed(String)
-    case deletionDenied
 
     var errorDescription: String? {
         switch self {
@@ -27,8 +26,6 @@ enum SplitError: LocalizedError {
             return "Failed to extract photo data: \(detail)"
         case .writeFailed(let detail):
             return "Failed to save photo: \(detail)"
-        case .deletionDenied:
-            return "Photos were saved but the original could not be deleted. You can delete it manually from Photos."
         }
     }
 }
@@ -186,13 +183,13 @@ final class PhotoLibraryManager {
         case .keepJPG:
             let jpgData = try await extractResourceData(for: pair.jpgResource)
             try await saveAsNewAsset(data: jpgData, resourceType: .photo, originalFilename: pair.jpgResource.originalFilename)
-            try await deleteAsset(pair.asset)
+            await deleteAssetSilently(pair.asset)
             pair.processResult = .keptJPG
 
         case .keepRAW:
             let rawData = try await extractResourceData(for: pair.rawResource)
             try await saveAsNewAsset(data: rawData, resourceType: .photo, originalFilename: pair.rawResource.originalFilename)
-            try await deleteAsset(pair.asset)
+            await deleteAssetSilently(pair.asset)
             pair.processResult = .keptRAW
 
         case .split:
@@ -200,7 +197,7 @@ final class PhotoLibraryManager {
             let rawData = try await extractResourceData(for: pair.rawResource)
             try await saveAsNewAsset(data: jpgData, resourceType: .photo, originalFilename: pair.jpgResource.originalFilename)
             try await saveAsNewAsset(data: rawData, resourceType: .photo, originalFilename: pair.rawResource.originalFilename)
-            try await deleteAsset(pair.asset)
+            await deleteAssetSilently(pair.asset)
             pair.processResult = .split
         }
     }
@@ -268,21 +265,13 @@ final class PhotoLibraryManager {
         }
     }
 
-    private func deleteAsset(_ asset: PHAsset) async throws {
-        do {
-            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                PHPhotoLibrary.shared().performChanges({
-                    PHAssetChangeRequest.deleteAssets([asset] as NSArray)
-                }) { success, error in
-                    if success {
-                        continuation.resume()
-                    } else {
-                        continuation.resume(throwing: SplitError.deletionDenied)
-                    }
-                }
+    private func deleteAssetSilently(_ asset: PHAsset) async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            PHPhotoLibrary.shared().performChanges({
+                PHAssetChangeRequest.deleteAssets([asset] as NSArray)
+            }) { _, _ in
+                continuation.resume()
             }
-        } catch is SplitError {
-            throw SplitError.deletionDenied
         }
     }
 
