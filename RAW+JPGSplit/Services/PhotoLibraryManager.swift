@@ -145,10 +145,16 @@ final class PhotoLibraryManager {
             var rawResource: PHAssetResource?
 
             for resource in resources {
-                if resource.type == .photo {
-                    jpgResource = resource
-                } else if resource.type == .alternatePhoto {
+                if resource.type == .alternatePhoto {
+                    // In a RAW+JPG pair, the alternate is always the RAW
                     rawResource = resource
+                } else if resource.type == .photo {
+                    // Check if this "photo" is actually a RAW file
+                    if Self.isRAWType(resource.uniformTypeIdentifier) {
+                        rawResource = resource
+                    } else {
+                        jpgResource = resource
+                    }
                 }
             }
 
@@ -381,6 +387,47 @@ final class PhotoLibraryManager {
     }
 
     // MARK: - Private Helpers
+
+    /// Check if a UTI represents a RAW image format
+    private static func isRAWType(_ uti: String) -> Bool {
+        let rawUTIs: Set<String> = [
+            "com.adobe.raw-image",          // DNG
+            "com.sony.arw-raw-image",       // ARW
+            "com.canon.cr2-raw-image",      // CR2
+            "com.canon.cr3-raw-image",      // CR3
+            "com.nikon.nrw-raw-image",      // NRW
+            "com.nikon.raw-image",          // NEF
+            "com.fuji.raw-image",           // RAF
+            "com.olympus.raw-image",        // ORF
+            "com.olympus.or-raw-image",     // ORF variant
+            "com.panasonic.raw-image",      // RW2
+            "com.panasonic.rw2-raw-image",  // RW2 variant
+            "com.pentax.raw-image",         // PEF
+            "com.samsung.raw-image",        // SRW
+            "com.leica.raw-image",          // RWL
+            "com.hasselblad.raw-image",     // 3FR
+            "com.hasselblad.fff-raw-image", // FFF
+            "com.apple.proraw",             // Apple ProRAW (old?)
+        ]
+
+        let lowerUTI = uti.lowercased()
+
+        // Direct match
+        if rawUTIs.contains(lowerUTI) { return true }
+
+        // Check if it conforms to the generic "com.adobe.raw-image" base type
+        // or contains "raw" in the UTI
+        if lowerUTI.contains("raw") { return true }
+
+        // Check by file extension in the UTI
+        if lowerUTI.hasSuffix(".dng") || lowerUTI.hasSuffix(".arw") ||
+           lowerUTI.hasSuffix(".cr2") || lowerUTI.hasSuffix(".cr3") ||
+           lowerUTI.hasSuffix(".nef") || lowerUTI.hasSuffix(".raf") ||
+           lowerUTI.hasSuffix(".orf") || lowerUTI.hasSuffix(".rw2") ||
+           lowerUTI.hasSuffix(".pef") { return true }
+
+        return false
+    }
 
     private func extractResourceData(for resource: PHAssetResource) async throws -> Data {
         try await withCheckedThrowingContinuation { continuation in

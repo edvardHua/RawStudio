@@ -395,8 +395,17 @@
         }
       }
     },
+    "RAW Only" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "仅 RAW"
+          }
+        }
+      }
+    },
     "RAW+JPG" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -472,6 +481,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "全选"
+          }
+        }
+      }
+    },
+    "Source" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "来源"
           }
         }
       }
@@ -563,36 +582,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "未处理"
-          }
-        }
-      }
-    },
-    "RAW+JPG" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "RAW+JPG"
-          }
-        }
-      }
-    },
-    "RAW Only" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "仅 RAW"
-          }
-        }
-      }
-    },
-    "Source" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "来源"
           }
         }
       }
