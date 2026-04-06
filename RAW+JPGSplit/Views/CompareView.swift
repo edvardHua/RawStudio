@@ -54,7 +54,20 @@ struct CompareView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if let image = currentDisplayImage {
                     ZStack(alignment: .topLeading) {
-                        ZoomableImageView(image: image, zoomState: $zoomState)
+                        ZoomableImageView(
+                            image: image,
+                            zoomState: $zoomState,
+                            onSwipeLeft: {
+                                if !isProcessing && currentIndex < pairs.count - 1 {
+                                    navigateTo(currentIndex + 1)
+                                }
+                            },
+                            onSwipeRight: {
+                                if !isProcessing && currentIndex > 0 {
+                                    navigateTo(currentIndex - 1)
+                                }
+                            }
+                        )
 
                         // Format label
                         Text(showingRAW ? "RAW" : "JPG")
@@ -76,10 +89,8 @@ struct CompareView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     if !isLoadingImages && !isProcessing {
                         Button {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                showingRAW.toggle()
-                                zoomState = ZoomState()
-                            }
+                            zoomState = ZoomState()
+                            showingRAW.toggle()
                         } label: {
                             Text(showingRAW ? "JPG" : "RAW")
                                 .font(.subheadline)
@@ -106,18 +117,6 @@ struct CompareView: View {
             } message: {
                 Text(errorMessage ?? "An unknown error occurred.")
             }
-            .gesture(
-                DragGesture(minimumDistance: 50)
-                    .onEnded { value in
-                        if zoomState.scale <= 1.0 && !isProcessing {
-                            if value.translation.width < -50 && currentIndex < pairs.count - 1 {
-                                navigateTo(currentIndex + 1)
-                            } else if value.translation.width > 50 && currentIndex > 0 {
-                                navigateTo(currentIndex - 1)
-                            }
-                        }
-                    }
-            )
             .task {
                 await loadImages()
             }

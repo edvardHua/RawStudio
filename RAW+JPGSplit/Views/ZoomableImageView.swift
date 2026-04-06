@@ -9,12 +9,16 @@ struct ZoomState: Equatable {
 struct ZoomableImageView: UIViewRepresentable {
     let image: UIImage
     @Binding var zoomState: ZoomState
+    var onSwipeLeft: (() -> Void)?
+    var onSwipeRight: (() -> Void)?
 
     func makeUIView(context: Context) -> ZoomableScrollView {
         let view = ZoomableScrollView()
         view.zoomStateChanged = { state in
             context.coordinator.handleZoomStateChanged(state)
         }
+        view.onSwipeLeft = onSwipeLeft
+        view.onSwipeRight = onSwipeRight
         view.setImage(image)
         return view
     }
@@ -24,6 +28,9 @@ struct ZoomableImageView: UIViewRepresentable {
         if imageChanged {
             view.setImage(image)
         }
+
+        view.onSwipeLeft = onSwipeLeft
+        view.onSwipeRight = onSwipeRight
 
         // Sync from binding (driven externally, e.g. when switching RAW/JPG)
         if !context.coordinator.isUserDriving && !imageChanged {
@@ -58,6 +65,8 @@ class ZoomableScrollView: UIScrollView, UIScrollViewDelegate {
     private let imageView = UIImageView()
     private(set) var currentImage: UIImage?
     var zoomStateChanged: ((ZoomState) -> Void)?
+    var onSwipeLeft: (() -> Void)?
+    var onSwipeRight: (() -> Void)?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -85,6 +94,14 @@ class ZoomableScrollView: UIScrollView, UIScrollViewDelegate {
         let doubleTap = UITapGestureRecognizer(target: self, action: #selector(handleDoubleTap(_:)))
         doubleTap.numberOfTapsRequired = 2
         addGestureRecognizer(doubleTap)
+
+        let swipeLeft = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipeLeft(_:)))
+        swipeLeft.direction = .left
+        addGestureRecognizer(swipeLeft)
+
+        let swipeRight = UISwipeGestureRecognizer(target: self, action: #selector(handleSwipeRight(_:)))
+        swipeRight.direction = .right
+        addGestureRecognizer(swipeRight)
     }
 
     func setImage(_ image: UIImage) {
@@ -181,5 +198,15 @@ class ZoomableScrollView: UIScrollView, UIScrollViewDelegate {
             )
             zoom(to: rect, animated: true)
         }
+    }
+
+    @objc private func handleSwipeLeft(_ gesture: UISwipeGestureRecognizer) {
+        guard zoomScale <= 1.0 else { return }
+        onSwipeLeft?()
+    }
+
+    @objc private func handleSwipeRight(_ gesture: UISwipeGestureRecognizer) {
+        guard zoomScale <= 1.0 else { return }
+        onSwipeRight?()
     }
 }
