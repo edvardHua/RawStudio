@@ -6,25 +6,15 @@ struct PhotoGridItemView: View {
     let isSelected: Bool
     var manager: PhotoLibraryManager?
 
+    @State private var thumbnail: UIImage?
+
     var body: some View {
         ZStack(alignment: .topLeading) {
             // Thumbnail
-            Group {
-                if let thumbnail = pair.thumbnail {
-                    Image(uiImage: thumbnail)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } else {
-                    Rectangle()
-                        .fill(.quaternary)
-                        .overlay {
-                            ProgressView()
-                        }
-                }
-            }
-            .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
-            .aspectRatio(1, contentMode: .fit)
-            .clipped()
+            thumbnailView
+                .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+                .aspectRatio(1, contentMode: .fit)
+                .clipped()
 
             // Overlays
             VStack(alignment: .leading, spacing: 0) {
@@ -68,10 +58,25 @@ struct PhotoGridItemView: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: 4))
         .opacity(pair.isProcessed ? 0.5 : 1.0)
-        .task {
-            if let manager {
-                await manager.loadThumbnail(for: pair)
+        .task(id: pair.id) {
+            if let manager, thumbnail == nil {
+                thumbnail = await manager.loadThumbnail(for: pair)
             }
+        }
+    }
+
+    @ViewBuilder
+    private var thumbnailView: some View {
+        if let thumbnail {
+            Image(uiImage: thumbnail)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+        } else {
+            Rectangle()
+                .fill(.quaternary)
+                .overlay {
+                    ProgressView()
+                }
         }
     }
 

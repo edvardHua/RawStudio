@@ -45,6 +45,9 @@ final class PhotoLibraryManager {
     var batchSuccessCount: Int = 0
     var batchFailCount: Int = 0
 
+    // Thumbnail cache (thread-safe, auto-evicts under memory pressure)
+    let thumbnailCache = NSCache<NSString, UIImage>()
+
     private let cachingManager = PHCachingImageManager()
     private let thumbnailSize = CGSize(width: 160, height: 160)
 
@@ -177,8 +180,13 @@ final class PhotoLibraryManager {
 
     // MARK: - Thumbnails
 
-    func loadThumbnail(for pair: PhotoPair) async {
-        guard pair.thumbnail == nil else { return }
+    func loadThumbnail(for pair: PhotoPair) async -> UIImage? {
+        let key = pair.id as NSString
+
+        // Check cache first
+        if let cached = thumbnailCache.object(forKey: key) {
+            return cached
+        }
 
         let options = PHImageRequestOptions()
         options.deliveryMode = .fastFormat
@@ -196,7 +204,10 @@ final class PhotoLibraryManager {
                 continuation.resume(returning: image)
             }
         }
-        pair.thumbnail = image
+        if let image {
+            thumbnailCache.setObject(image, forKey: key)
+        }
+        return image
     }
 
     // MARK: - Load Full Images for Compare

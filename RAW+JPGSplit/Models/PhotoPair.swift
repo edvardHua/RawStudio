@@ -7,7 +7,6 @@ enum ProcessResult: Equatable {
     case split
 }
 
-@Observable
 final class PhotoPair: Identifiable {
     let id: String
     let asset: PHAsset
@@ -17,7 +16,6 @@ final class PhotoPair: Identifiable {
     let fileName: String
     let rawFormatLabel: String
 
-    var thumbnail: UIImage?
     var processResult: ProcessResult?
 
     var isProcessed: Bool { processResult != nil }
@@ -33,7 +31,6 @@ final class PhotoPair: Identifiable {
         self.captureDate = asset.creationDate ?? Date.distantPast
         self.fileName = (jpgResource ?? rawResource).originalFilename
         self.rawFormatLabel = Self.formatLabel(for: rawResource)
-        self.thumbnail = nil
         self.processResult = nil
     }
 

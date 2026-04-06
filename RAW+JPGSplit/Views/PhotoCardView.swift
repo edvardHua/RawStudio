@@ -7,6 +7,8 @@ struct PhotoCardView: View {
     let onToggleSelect: () -> Void
     var manager: PhotoLibraryManager?
 
+    @State private var thumbnail: UIImage?
+
     private static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
         f.dateStyle = .medium
@@ -26,21 +28,9 @@ struct PhotoCardView: View {
             }
 
             // Thumbnail
-            Group {
-                if let thumbnail = pair.thumbnail {
-                    Image(uiImage: thumbnail)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                } else {
-                    Rectangle()
-                        .fill(.quaternary)
-                        .overlay {
-                            ProgressView()
-                        }
-                }
-            }
-            .frame(width: 72, height: 72)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            thumbnailView
+                .frame(width: 72, height: 72)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
 
             // Info
             VStack(alignment: .leading, spacing: 4) {
@@ -79,10 +69,25 @@ struct PhotoCardView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .opacity(pair.isProcessed ? 0.5 : 1.0)
-        .task {
-            if let manager {
-                await manager.loadThumbnail(for: pair)
+        .task(id: pair.id) {
+            if let manager, thumbnail == nil {
+                thumbnail = await manager.loadThumbnail(for: pair)
             }
+        }
+    }
+
+    @ViewBuilder
+    private var thumbnailView: some View {
+        if let thumbnail {
+            Image(uiImage: thumbnail)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+        } else {
+            Rectangle()
+                .fill(.quaternary)
+                .overlay {
+                    ProgressView()
+                }
         }
     }
 

@@ -250,25 +250,36 @@ struct GalleryView: View {
 
     private var listContent: some View {
         let grouped = manager.groupedByDate(filteredPairs)
-        return List {
-            ForEach(grouped, id: \.date) { section in
-                Section(header: Text(section.date)) {
-                    ForEach(section.pairs) { pair in
-                        PhotoCardView(
-                            pair: pair,
-                            isSelecting: isSelecting,
-                            isSelected: selectedIDs.contains(pair.id),
-                            onToggleSelect: { toggleSelect(pair.id) },
-                            manager: manager
-                        )
-                        .contentShape(Rectangle())
-                        .onTapGesture { handleTap(pair) }
-                        .listRowInsets(EdgeInsets())
+        return ScrollView {
+            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+                ForEach(grouped, id: \.date) { section in
+                    Section {
+                        ForEach(section.pairs) { pair in
+                            PhotoCardView(
+                                pair: pair,
+                                isSelecting: isSelecting,
+                                isSelected: selectedIDs.contains(pair.id),
+                                onToggleSelect: { toggleSelect(pair.id) },
+                                manager: manager
+                            )
+                            .contentShape(Rectangle())
+                            .onTapGesture { handleTap(pair) }
+
+                            Divider().padding(.leading, 100)
+                        }
+                    } header: {
+                        Text(section.date)
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 6)
+                            .background(.bar)
                     }
                 }
             }
         }
-        .listStyle(.plain)
     }
 
     // MARK: - Grid Layout
