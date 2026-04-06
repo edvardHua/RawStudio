@@ -118,14 +118,14 @@ struct CompareView: View {
             }
             .safeAreaInset(edge: .bottom) {
                 if let pair = currentPair, !isLoadingImages, !isProcessing {
-                    if pair.isRawOnly || showingRAW {
-                        // RAW-only or viewing RAW: show two HDR buttons
+                    if pair.isRawOnly {
+                        // RAW-only: show two HDR buttons
                         ActionBarView(
                             onExportHDR: { exportHDR() },
                             onExportUltraHDR: { exportUltraHDR() }
                         )
                     } else {
-                        // Viewing JPG of a pair: show keep/split + HDR menu
+                        // RAW+JPG pair: always show keep/split + HDR menu
                         ActionBarView(
                             onKeepJPG: { performAction(.keepJPG) },
                             onKeepRAW: { performAction(.keepRAW) },
