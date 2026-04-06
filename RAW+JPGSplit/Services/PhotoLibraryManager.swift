@@ -213,8 +213,8 @@ final class PhotoLibraryManager {
         return (image, metadata)
     }
 
-    /// Load RAW image and metadata using CIRAWFilter
-    func loadRAWImageWithMetadata(for pair: PhotoPair) async throws -> (UIImage, PhotoMetadata) {
+    /// Load RAW image and metadata using CIRAWFilter, optionally applying edit params
+    func loadRAWImageWithMetadata(for pair: PhotoPair, editParams: RAWEditParams = RAWEditParams()) async throws -> (UIImage, PhotoMetadata) {
         let resource = pair.rawResource
         let data = try await extractResourceData(for: resource)
         let fileSize = (try? resource.value(forKey: "fileSize") as? Int64) ?? Int64(data.count)
@@ -229,6 +229,10 @@ final class PhotoLibraryManager {
 
         // Try CIRAWFilter first (iOS 15+) for proper RAW rendering
         if let rawFilter = CIRAWFilter(imageData: data, identifierHint: resource.uniformTypeIdentifier) {
+            // Apply edit params
+            if editParams.isModified {
+                RAWEditorView.applyParams(editParams, to: rawFilter)
+            }
             if let outputImage = rawFilter.outputImage {
                 let extent = outputImage.extent
                 if let cgImage = ciContext.createCGImage(outputImage, from: extent) {
@@ -250,14 +254,24 @@ final class PhotoLibraryManager {
         return (image, metadata)
     }
 
+    /// Expose raw data extraction for the editor
+    func extractRawData(for resource: PHAssetResource) async throws -> Data {
+        try await extractResourceData(for: resource)
+    }
+
     // MARK: - Core Operations
 
     /// Export Adaptive HDR HEIF from RAW data
-    func exportAdaptiveHDR(for pair: PhotoPair) async throws {
+    func exportAdaptiveHDR(for pair: PhotoPair, editParams: RAWEditParams = RAWEditParams()) async throws {
         let rawData = try await extractResourceData(for: pair.rawResource)
 
         guard let rawFilter = CIRAWFilter(imageData: rawData, identifierHint: pair.rawResource.uniformTypeIdentifier) else {
             throw SplitError.extractionFailed("Cannot create RAW filter for \(pair.rawResource.originalFilename)")
+        }
+
+        // Apply edit params
+        if editParams.isModified {
+            RAWEditorView.applyParams(editParams, to: rawFilter)
         }
 
         // Render SDR version
@@ -302,11 +316,16 @@ final class PhotoLibraryManager {
     }
 
     /// Export Ultra HDR JPEG (MPF format with gain map) from RAW data
-    func exportUltraHDRJPEG(for pair: PhotoPair) async throws {
+    func exportUltraHDRJPEG(for pair: PhotoPair, editParams: RAWEditParams = RAWEditParams()) async throws {
         let rawData = try await extractResourceData(for: pair.rawResource)
 
         guard let rawFilter = CIRAWFilter(imageData: rawData, identifierHint: pair.rawResource.uniformTypeIdentifier) else {
             throw SplitError.extractionFailed("Cannot create RAW filter for \(pair.rawResource.originalFilename)")
+        }
+
+        // Apply edit params
+        if editParams.isModified {
+            RAWEditorView.applyParams(editParams, to: rawFilter)
         }
 
         // Render SDR version

@@ -5,6 +5,7 @@ struct CompareView: View {
     @Bindable var manager: PhotoLibraryManager
     let pairs: [PhotoPair]
     let startIndex: Int
+    var presetStore: RAWEditPresetStore
 
     @State private var currentIndex: Int
     @State private var jpgImage: UIImage?
@@ -20,12 +21,16 @@ struct CompareView: View {
     @State private var toastMessage = ""
     @State private var errorMessage: String?
     @State private var showError = false
+    @State private var showEditor = false
+    @State private var cachedRawData: Data?
+    @State private var currentEditParams = RAWEditParams()
     @Environment(\.dismiss) private var dismiss
 
-    init(manager: PhotoLibraryManager, pairs: [PhotoPair], startIndex: Int) {
+    init(manager: PhotoLibraryManager, pairs: [PhotoPair], startIndex: Int, presetStore: RAWEditPresetStore) {
         self.manager = manager
         self.pairs = pairs
         self.startIndex = startIndex
+        self.presetStore = presetStore
         self._currentIndex = State(initialValue: startIndex)
     }
 
@@ -100,18 +105,31 @@ struct CompareView: View {
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    // Only show toggle when pair has both RAW and JPG
-                    if let pair = currentPair, !pair.isRawOnly, !isLoadingImages, !isProcessing {
-                        Button {
-                            zoomState = ZoomState()
-                            showingRAW.toggle()
-                        } label: {
-                            Text(showingRAW ? "JPG" : "RAW")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(.ultraThinMaterial, in: Capsule())
+                    HStack(spacing: 12) {
+                        // Edit button (for RAW)
+                        if !isLoadingImages && !isProcessing {
+                            Button {
+                                openEditor()
+                            } label: {
+                                Image(systemName: "slider.horizontal.3")
+                                    .padding(6)
+                                    .background(.ultraThinMaterial, in: Circle())
+                            }
+                        }
+
+                        // RAW/JPG toggle (only for pairs)
+                        if let pair = currentPair, !pair.isRawOnly, !isLoadingImages, !isProcessing {
+                            Button {
+                                zoomState = ZoomState()
+                                showingRAW.toggle()
+                            } label: {
+                                Text(showingRAW ? "JPG" : "RAW")
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(.ultraThinMaterial, in: Capsule())
+                            }
                         }
                     }
                 }
@@ -163,6 +181,22 @@ struct CompareView: View {
             }
         }
         .navigationBarBackButtonHidden(isProcessing)
+        .fullScreenCover(isPresented: $showEditor) {
+            if let rawData = cachedRawData, let pair = currentPair {
+                RAWEditorView(
+                    rawData: rawData,
+                    resourceHint: pair.rawResource.uniformTypeIdentifier,
+                    assetID: pair.id,
+                    presetStore: presetStore,
+                    initialParams: currentEditParams,
+                    onDone: { params in
+                        currentEditParams = params
+                        // Re-render preview with new params
+                        Task { await reRenderRAWPreview() }
+                    }
+                )
+            }
+        }
     }
 
     // MARK: - Format Badge
@@ -249,8 +283,15 @@ struct CompareView: View {
         guard let pair = currentPair else { return }
         isLoadingImages = true
         do {
+            // Cache RAW data for editor
+            let rawData = try await manager.extractRawData(for: pair.rawResource)
+            cachedRawData = rawData
+
+            // Load saved edit params for this asset
+            currentEditParams = presetStore.loadParams(for: pair.id)
+
             // Always load RAW
-            let rawResult = try await manager.loadRAWImageWithMetadata(for: pair)
+            let rawResult = try await manager.loadRAWImageWithMetadata(for: pair, editParams: currentEditParams)
             rawImage = rawResult.0
             rawMetadata = rawResult.1
 
@@ -322,7 +363,7 @@ struct CompareView: View {
             processingMessage = String(localized: "Exporting HDR...")
 
             do {
-                try await manager.exportAdaptiveHDR(for: pair)
+                try await manager.exportAdaptiveHDR(for: pair, editParams: currentEditParams)
                 isProcessing = false
 
                 toastMessage = String(localized: "HDR photo exported to library")
@@ -342,7 +383,7 @@ struct CompareView: View {
             processingMessage = String(localized: "Exporting Ultra HDR...")
 
             do {
-                try await manager.exportUltraHDRJPEG(for: pair)
+                try await manager.exportUltraHDRJPEG(for: pair, editParams: currentEditParams)
                 isProcessing = false
 
                 toastMessage = String(localized: "Ultra HDR JPEG exported to library")
@@ -360,6 +401,22 @@ struct CompareView: View {
         currentIndex = index
         Task {
             await loadImages()
+        }
+    }
+
+    private func openEditor() {
+        guard cachedRawData != nil else { return }
+        showEditor = true
+    }
+
+    private func reRenderRAWPreview() async {
+        guard let pair = currentPair else { return }
+        do {
+            let rawResult = try await manager.loadRAWImageWithMetadata(for: pair, editParams: currentEditParams)
+            rawImage = rawResult.0
+            rawMetadata = rawResult.1
+        } catch {
+            // Silently fail — preview stays as-is
         }
     }
 }

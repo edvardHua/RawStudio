@@ -33,6 +33,7 @@ enum GalleryLayout: String {
 
 struct GalleryView: View {
     @Bindable var manager: PhotoLibraryManager
+    var presetStore: RAWEditPresetStore
     @State private var filter: GalleryFilter = .unprocessed
     @State private var sourceFilter: SourceFilter = .rawJPGPairs
     @State private var layout: GalleryLayout = .list
@@ -218,7 +219,8 @@ struct GalleryView: View {
                 CompareView(
                     manager: manager,
                     pairs: filteredPairs.filter { !$0.isProcessed },
-                    startIndex: index
+                    startIndex: index,
+                    presetStore: presetStore
                 )
             }
             .sheet(isPresented: $showAlbumPicker) {

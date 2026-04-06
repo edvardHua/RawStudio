@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     @State private var manager = PhotoLibraryManager()
+    @State private var presetStore = RAWEditPresetStore()
 
     var body: some View {
         Group {
@@ -19,7 +20,7 @@ struct ContentView: View {
                         await manager.requestPermission()
                     }
             case .authorized:
-                GalleryView(manager: manager)
+                GalleryView(manager: manager, presetStore: presetStore)
                     .task {
                         manager.fetchAlbums()
                         await manager.fetchPairedAssets()
