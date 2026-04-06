@@ -121,7 +121,8 @@ struct CompareView: View {
                         onKeepJPG: { performAction(.keepJPG) },
                         onKeepRAW: { performAction(.keepRAW) },
                         onSplit: { performAction(.split) },
-                        onExportHDR: { exportHDR() }
+                        onExportHDR: { exportHDR() },
+                        onExportUltraHDR: { exportUltraHDR() }
                     )
                 }
             }
@@ -308,6 +309,26 @@ struct CompareView: View {
                 isProcessing = false
 
                 toastMessage = String(localized: "HDR photo exported to library")
+                withAnimation { showToast = true }
+            } catch {
+                isProcessing = false
+                errorMessage = error.localizedDescription
+                showError = true
+            }
+        }
+    }
+
+    private func exportUltraHDR() {
+        guard let pair = currentPair, !isProcessing else { return }
+        Task {
+            isProcessing = true
+            processingMessage = String(localized: "Exporting Ultra HDR...")
+
+            do {
+                try await manager.exportUltraHDRJPEG(for: pair)
+                isProcessing = false
+
+                toastMessage = String(localized: "Ultra HDR JPEG exported to library")
                 withAnimation { showToast = true }
             } catch {
                 isProcessing = false

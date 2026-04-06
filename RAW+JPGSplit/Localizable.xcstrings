@@ -495,6 +495,46 @@
           }
         }
       }
+    },
+    "Exporting Ultra HDR..." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在导出 Ultra HDR…"
+          }
+        }
+      }
+    },
+    "Ultra HDR JPEG exported to library" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ultra HDR JPEG 已导出到图库"
+          }
+        }
+      }
+    },
+    "Adaptive HDR (HEIF)" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adaptive HDR (HEIF)"
+          }
+        }
+      }
+    },
+    "Ultra HDR (JPEG)" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ultra HDR (JPEG)"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

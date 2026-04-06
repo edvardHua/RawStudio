@@ -294,6 +294,39 @@ final class PhotoLibraryManager {
         )
     }
 
+    /// Export Ultra HDR JPEG (MPF format with gain map) from RAW data
+    func exportUltraHDRJPEG(for pair: PhotoPair) async throws {
+        let rawData = try await extractResourceData(for: pair.rawResource)
+
+        guard let rawFilter = CIRAWFilter(imageData: rawData, identifierHint: pair.rawResource.uniformTypeIdentifier) else {
+            throw SplitError.extractionFailed("Cannot create RAW filter for \(pair.rawResource.originalFilename)")
+        }
+
+        // Render SDR version
+        rawFilter.extendedDynamicRangeAmount = 0.0
+        guard let sdrImage = rawFilter.outputImage else {
+            throw SplitError.extractionFailed("Cannot render SDR image from RAW")
+        }
+
+        // Render HDR version
+        rawFilter.extendedDynamicRangeAmount = 1.0
+        guard let hdrImage = rawFilter.outputImage else {
+            throw SplitError.extractionFailed("Cannot render HDR image from RAW")
+        }
+
+        // Generate Ultra HDR JPEG
+        let writer = UltraHDRWriter(ciContext: ciContext)
+        let ultraHDRData = try writer.writeUltraHDRJPEG(sdrImage: sdrImage, hdrImage: hdrImage)
+
+        // Save to photo library
+        try await saveAsNewAsset(
+            data: ultraHDRData,
+            resourceType: .photo,
+            originalFilename: (pair.rawResource.originalFilename as NSString)
+                .deletingPathExtension + "_UltraHDR.jpg"
+        )
+    }
+
     func performAction(_ action: SplitAction, on pair: PhotoPair) async throws {
         switch action {
         case .keepJPG:

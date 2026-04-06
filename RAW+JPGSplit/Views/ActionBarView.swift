@@ -5,6 +5,7 @@ struct ActionBarView: View {
     let onKeepRAW: () -> Void
     let onSplit: () -> Void
     var onExportHDR: (() -> Void)?
+    var onExportUltraHDR: (() -> Void)?
 
     var body: some View {
         HStack(spacing: 0) {
@@ -13,9 +14,9 @@ struct ActionBarView: View {
             actionButton(title: "Keep RAW", icon: "camera.filters", action: onKeepRAW)
             divider
             actionButton(title: "Split", icon: "rectangle.split.2x1", action: onSplit)
-            if let onExportHDR {
+            if onExportHDR != nil || onExportUltraHDR != nil {
                 divider
-                actionButton(title: "HDR", icon: "sun.max.fill", action: onExportHDR)
+                hdrMenuButton
             }
         }
         .padding(.vertical, 8)
@@ -25,6 +26,30 @@ struct ActionBarView: View {
 
     private var divider: some View {
         Divider().frame(height: 30)
+    }
+
+    private var hdrMenuButton: some View {
+        Menu {
+            if let onExportHDR {
+                Button(action: onExportHDR) {
+                    Label("Adaptive HDR (HEIF)", systemImage: "photo.badge.checkmark")
+                }
+            }
+            if let onExportUltraHDR {
+                Button(action: onExportUltraHDR) {
+                    Label("Ultra HDR (JPEG)", systemImage: "photo.badge.arrow.down")
+                }
+            }
+        } label: {
+            VStack(spacing: 4) {
+                Image(systemName: "sun.max.fill")
+                    .font(.title3)
+                Text("HDR")
+                    .font(.caption)
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.plain)
     }
 
     private func actionButton(title: String, icon: String, action: @escaping () -> Void) -> some View {
@@ -48,7 +73,8 @@ struct ActionBarView: View {
             onKeepJPG: {},
             onKeepRAW: {},
             onSplit: {},
-            onExportHDR: {}
+            onExportHDR: {},
+            onExportUltraHDR: {}
         )
     }
 }
