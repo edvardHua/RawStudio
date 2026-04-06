@@ -6,12 +6,15 @@ struct JPGEditorView: View {
     let imageData: Data
     let assetID: String
     var presetStore: RAWEditPresetStore
-    let onDone: (JPGEditParams, UIImage?) -> Void
+    let onDone: (JPGEditParams, LayerEdits, UIImage?) -> Void
 
     @State private var params: JPGEditParams
     @State private var previewImage: UIImage?
     @State private var isRendering = false
     @State private var selectedTab: EditorTab = .exposure
+    @State private var selectedLayer: LayerType = .global
+    @State private var layerEdits: LayerEdits
+    @State private var segmentation = SegmentationService()
     @Environment(\.dismiss) private var dismiss
 
     private let ciContext = CIContext(options: [.useSoftwareRenderer: false])
@@ -39,12 +42,14 @@ struct JPGEditorView: View {
     }
 
     init(imageData: Data, assetID: String, presetStore: RAWEditPresetStore,
-         initialParams: JPGEditParams, onDone: @escaping (JPGEditParams, UIImage?) -> Void) {
+         initialParams: JPGEditParams, initialLayerEdits: LayerEdits = LayerEdits(),
+         onDone: @escaping (JPGEditParams, LayerEdits, UIImage?) -> Void) {
         self.imageData = imageData
         self.assetID = assetID
         self.presetStore = presetStore
         self.onDone = onDone
         self._params = State(initialValue: initialParams)
+        self._layerEdits = State(initialValue: initialLayerEdits)
 
         // Create CIImage with orientation applied so pixels match display
         if let ciImage = CIImage(data: imageData) {
@@ -97,14 +102,24 @@ struct JPGEditorView: View {
                         if let data = try? JSONEncoder().encode(params) {
                             UserDefaults.standard.set(data, forKey: jpgKey)
                         }
-                        onDone(params, previewImage)
+                        let layerKey = "layerEdits_jpg_\(assetID)"
+                        if let data = try? JSONEncoder().encode(layerEdits) {
+                            UserDefaults.standard.set(data, forKey: layerKey)
+                        }
+                        onDone(params, layerEdits, previewImage)
                         dismiss()
                     }
                     .fontWeight(.semibold)
                 }
             }
-            .task { await renderPreview() }
+            .task {
+                await generateMasks()
+                await renderPreview()
+            }
             .onChange(of: params) { _, _ in
+                Task { await renderPreview() }
+            }
+            .onChange(of: layerEdits) { _, _ in
                 Task { await renderPreview() }
             }
         }
@@ -131,38 +146,78 @@ struct JPGEditorView: View {
 
     private var editorControls: some View {
         VStack(spacing: 0) {
-            // Reset button
-            HStack {
-                Button {
-                    params.reset()
-                } label: {
-                    Label("Reset", systemImage: "arrow.counterclockwise")
-                        .font(.caption)
-                }
-                .disabled(!params.isModified)
-                .buttonStyle(.plain)
-                .foregroundStyle(.white)
+            // Layer selector
+            LayerSelectorView(selectedLayer: $selectedLayer, segmentation: segmentation)
+                .padding(.top, 8)
+                .padding(.bottom, 4)
 
-                Spacer()
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 10)
-            .padding(.bottom, 6)
-
-            // Tabs
-            tabSelector
-                .padding(.bottom, 8)
-
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 14) {
-                    tabContent
+            if selectedLayer == .global {
+                // Global JPG editing
+                HStack {
+                    Button {
+                        params.reset()
+                    } label: {
+                        Label("Reset", systemImage: "arrow.counterclockwise")
+                            .font(.caption)
+                    }
+                    .disabled(!params.isModified)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.white)
+                    Spacer()
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, 20)
+                .padding(.top, 4)
+                .padding(.bottom, 6)
+
+                tabSelector
+                    .padding(.bottom, 8)
+
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(spacing: 14) {
+                        tabContent
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 20)
+                }
+                .frame(height: 200)
+            } else {
+                // Layer editing: 5 common params
+                HStack {
+                    Button {
+                        var p = layerEdits.params(for: selectedLayer)
+                        p.reset()
+                        layerEdits.setParams(p, for: selectedLayer)
+                    } label: {
+                        Label("Reset", systemImage: "arrow.counterclockwise")
+                            .font(.caption)
+                    }
+                    .disabled(!layerEdits.params(for: selectedLayer).isModified)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.white)
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 4)
+                .padding(.bottom, 6)
+
+                ScrollView(.vertical, showsIndicators: false) {
+                    jpgLayerParamsContent
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 20)
+                }
+                .frame(height: 220)
             }
-            .frame(height: 220)
         }
         .background(.ultraThinMaterial)
+    }
+
+    @ViewBuilder
+    private var jpgLayerParamsContent: some View {
+        let binding = Binding<LayerEditParams>(
+            get: { layerEdits.params(for: selectedLayer) },
+            set: { layerEdits.setParams($0, for: selectedLayer) }
+        )
+        LayerParamsView(params: binding)
     }
 
     private var tabSelector: some View {
@@ -248,16 +303,34 @@ struct JPGEditorView: View {
 
     // MARK: - Rendering
 
+    private func generateMasks() async {
+        guard let source = sourceImage else { return }
+        // Use a scaled-down version for mask generation
+        let scale: CGFloat = 0.25
+        let scaled = source.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        await segmentation.generateMasks(for: scaled, identifier: assetID)
+    }
+
     private func renderPreview() async {
         guard !isRendering, let source = sourceImage else { return }
         isRendering = true
         defer { isRendering = false }
 
-        let output = Self.applyParams(params, to: source)
+        var output = Self.applyParams(params, to: source)
 
         // Scale down for preview
         let scale: CGFloat = 0.25
-        let scaled = output.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+        var scaled = output.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
+
+        // Apply layer edits with masks
+        if layerEdits.hasAnyLayerEdits {
+            for layer in [LayerType.person, .foreground, .background] {
+                let lp = layerEdits.params(for: layer)
+                if lp.isModified, let mask = segmentation.mask(for: layer, imageExtent: scaled.extent) {
+                    scaled = SegmentationService.applyLayerEdits(lp, to: scaled, mask: mask)
+                }
+            }
+        }
 
         guard let cgImage = ciContext.createCGImage(scaled, from: scaled.extent) else { return }
         let uiImage = UIImage(cgImage: cgImage)

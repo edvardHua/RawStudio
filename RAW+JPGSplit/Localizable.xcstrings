@@ -895,6 +895,34 @@
           "stringUnit" : { "state" : "translated", "value" : "正在扫描更多照片… %@" }
         }
       }
+    },
+    "Global" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : { "state" : "translated", "value" : "全局" }
+        }
+      }
+    },
+    "Person" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : { "state" : "translated", "value" : "人物" }
+        }
+      }
+    },
+    "Foreground" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : { "state" : "translated", "value" : "前景" }
+        }
+      }
+    },
+    "Background" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : { "state" : "translated", "value" : "背景" }
+        }
+      }
     }
   },
   "version" : "1.0"

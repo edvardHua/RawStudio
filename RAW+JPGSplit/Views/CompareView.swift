@@ -27,6 +27,8 @@ struct CompareView: View {
     @State private var cachedJPGData: Data?
     @State private var currentEditParams = RAWEditParams()
     @State private var currentJPGEditParams = JPGEditParams()
+    @State private var currentLayerEdits = LayerEdits()
+    @State private var currentJPGLayerEdits = LayerEdits()
     @Environment(\.dismiss) private var dismiss
 
     init(manager: PhotoLibraryManager, pairs: [PhotoPair], startIndex: Int, presetStore: RAWEditPresetStore) {
@@ -192,8 +194,10 @@ struct CompareView: View {
                     assetID: pair.id,
                     presetStore: presetStore,
                     initialParams: currentEditParams,
-                    onDone: { params in
+                    initialLayerEdits: currentLayerEdits,
+                    onDone: { params, layers in
                         currentEditParams = params
+                        currentLayerEdits = layers
                         Task { await reRenderRAWPreview() }
                     }
                 )
@@ -206,8 +210,10 @@ struct CompareView: View {
                     assetID: pair.id,
                     presetStore: presetStore,
                     initialParams: currentJPGEditParams,
-                    onDone: { params, editedImage in
+                    initialLayerEdits: currentJPGLayerEdits,
+                    onDone: { params, layers, editedImage in
                         currentJPGEditParams = params
+                        currentJPGLayerEdits = layers
                         if let editedImage {
                             jpgImage = editedImage
                         }
@@ -321,6 +327,23 @@ struct CompareView: View {
                 currentJPGEditParams = jpgParams
             } else {
                 currentJPGEditParams = JPGEditParams()
+            }
+
+            // Load saved layer edits
+            let layerKey = "layerEdits_\(pair.id)"
+            if let data = UserDefaults.standard.data(forKey: layerKey),
+               let le = try? JSONDecoder().decode(LayerEdits.self, from: data) {
+                currentLayerEdits = le
+            } else {
+                currentLayerEdits = LayerEdits()
+            }
+
+            let jpgLayerKey = "layerEdits_jpg_\(pair.id)"
+            if let data = UserDefaults.standard.data(forKey: jpgLayerKey),
+               let le = try? JSONDecoder().decode(LayerEdits.self, from: data) {
+                currentJPGLayerEdits = le
+            } else {
+                currentJPGLayerEdits = LayerEdits()
             }
 
             // Always load RAW

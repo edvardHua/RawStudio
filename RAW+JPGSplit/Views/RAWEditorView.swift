@@ -8,7 +8,7 @@ struct RAWEditorView: View {
     let resourceHint: String
     let assetID: String
     var presetStore: RAWEditPresetStore
-    let onDone: (RAWEditParams) -> Void
+    let onDone: (RAWEditParams, LayerEdits) -> Void
 
     @State private var params: RAWEditParams
     @State private var previewImage: UIImage?
@@ -17,6 +17,10 @@ struct RAWEditorView: View {
     @State private var showPresetPicker = false
     @State private var showSavePreset = false
     @State private var presetName = ""
+    @State private var selectedLayer: LayerType = .global
+    @State private var layerEdits: LayerEdits
+    @State private var segmentation = SegmentationService()
+    @State private var isMaskLoading = false
     @Environment(\.dismiss) private var dismiss
 
     private let ciContext = CIContext(options: [.useSoftwareRenderer: false])
@@ -45,13 +49,15 @@ struct RAWEditorView: View {
 
     init(rawData: Data, resourceHint: String, assetID: String,
          presetStore: RAWEditPresetStore, initialParams: RAWEditParams,
-         onDone: @escaping (RAWEditParams) -> Void) {
+         initialLayerEdits: LayerEdits = LayerEdits(),
+         onDone: @escaping (RAWEditParams, LayerEdits) -> Void) {
         self.rawData = rawData
         self.resourceHint = resourceHint
         self.assetID = assetID
         self.presetStore = presetStore
         self.onDone = onDone
         self._params = State(initialValue: initialParams)
+        self._layerEdits = State(initialValue: initialLayerEdits)
     }
 
     var body: some View {
@@ -78,14 +84,25 @@ struct RAWEditorView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") {
                         presetStore.saveParams(params, for: assetID)
-                        onDone(params)
+                        // Save layer edits
+                        let layerKey = "layerEdits_\(assetID)"
+                        if let data = try? JSONEncoder().encode(layerEdits) {
+                            UserDefaults.standard.set(data, forKey: layerKey)
+                        }
+                        onDone(params, layerEdits)
                         dismiss()
                     }
                     .fontWeight(.semibold)
                 }
             }
-            .task { await renderPreview() }
+            .task {
+                await generateMasks()
+                await renderPreview()
+            }
             .onChange(of: params) { _, _ in
+                Task { await renderPreview() }
+            }
+            .onChange(of: layerEdits) { _, _ in
                 Task { await renderPreview() }
             }
             .sheet(isPresented: $showPresetPicker) {
@@ -133,27 +150,67 @@ struct RAWEditorView: View {
 
     private var editorControls: some View {
         VStack(spacing: 0) {
-            // Toolbar: Reset / Presets / Save Preset
-            controlsToolbar
-                .padding(.horizontal, 16)
-                .padding(.top, 10)
-                .padding(.bottom, 6)
+            // Layer selector
+            LayerSelectorView(selectedLayer: $selectedLayer, segmentation: segmentation)
+                .padding(.top, 8)
+                .padding(.bottom, 4)
 
-            // Tab selector
-            tabSelector
-                .padding(.bottom, 8)
+            if selectedLayer == .global {
+                // Global editing: full RAW params
+                controlsToolbar
+                    .padding(.horizontal, 16)
+                    .padding(.top, 4)
+                    .padding(.bottom, 6)
 
-            // Parameter sliders
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 14) {
-                    tabContent
+                tabSelector
+                    .padding(.bottom, 8)
+
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(spacing: 14) {
+                        tabContent
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 20)
+                }
+                .frame(height: 200)
+            } else {
+                // Layer editing: 5 common params
+                HStack {
+                    Button {
+                        var p = layerEdits.params(for: selectedLayer)
+                        p.reset()
+                        layerEdits.setParams(p, for: selectedLayer)
+                    } label: {
+                        Label("Reset", systemImage: "arrow.counterclockwise")
+                            .font(.caption)
+                    }
+                    .disabled(!layerEdits.params(for: selectedLayer).isModified)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.white)
+                    Spacer()
                 }
                 .padding(.horizontal, 16)
-                .padding(.bottom, 20)
+                .padding(.top, 4)
+                .padding(.bottom, 6)
+
+                ScrollView(.vertical, showsIndicators: false) {
+                    layerParamsContent
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 20)
+                }
+                .frame(height: 220)
             }
-            .frame(height: 220)
         }
         .background(.ultraThinMaterial)
+    }
+
+    @ViewBuilder
+    private var layerParamsContent: some View {
+        let binding = Binding<LayerEditParams>(
+            get: { layerEdits.params(for: selectedLayer) },
+            set: { layerEdits.setParams($0, for: selectedLayer) }
+        )
+        LayerParamsView(params: binding)
     }
 
     private var controlsToolbar: some View {
@@ -292,6 +349,16 @@ struct RAWEditorView: View {
 
     // MARK: - Rendering
 
+    private func generateMasks() async {
+        guard let rawFilter = CIRAWFilter(imageData: rawData, identifierHint: resourceHint) else { return }
+        rawFilter.isDraftModeEnabled = true
+        rawFilter.scaleFactor = 0.25
+        guard let image = rawFilter.outputImage else { return }
+        isMaskLoading = true
+        await segmentation.generateMasks(for: image, identifier: assetID)
+        isMaskLoading = false
+    }
+
     private func renderPreview() async {
         guard !isRendering else { return }
         isRendering = true
@@ -299,14 +366,24 @@ struct RAWEditorView: View {
 
         guard let rawFilter = CIRAWFilter(imageData: rawData, identifierHint: resourceHint) else { return }
 
-        // Apply params
+        // Apply global params
         applyParams(params, to: rawFilter)
 
         // Draft mode for fast preview
         rawFilter.isDraftModeEnabled = true
         rawFilter.scaleFactor = 0.25
 
-        guard let outputImage = rawFilter.outputImage else { return }
+        guard var outputImage = rawFilter.outputImage else { return }
+
+        // Apply layer edits with masks
+        if layerEdits.hasAnyLayerEdits {
+            for layer in [LayerType.person, .foreground, .background] {
+                let lp = layerEdits.params(for: layer)
+                if lp.isModified, let mask = segmentation.mask(for: layer, imageExtent: outputImage.extent) {
+                    outputImage = SegmentationService.applyLayerEdits(lp, to: outputImage, mask: mask)
+                }
+            }
+        }
 
         // Render to UIImage
         let extent = outputImage.extent
