@@ -534,6 +534,36 @@
           }
         }
       }
+    },
+    "Export %lld photos as %@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导出 %lld 张照片为 %@"
+          }
+        }
+      }
+    },
+    "Adaptive HDR" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adaptive HDR"
+          }
+        }
+      }
+    },
+    "Ultra HDR" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ultra HDR"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

@@ -27,6 +27,7 @@ struct GalleryView: View {
     @State private var selectedIDs: Set<String> = []
     @State private var showBatchConfirm = false
     @State private var pendingBatchAction: SplitAction?
+    @State private var pendingBatchHDRType: String?
     @State private var showBatchResult = false
     @State private var batchResultMessage = ""
     @State private var navigateToCompareIndex: Int?
@@ -149,7 +150,9 @@ struct GalleryView: View {
                     ActionBarView(
                         onKeepJPG: { confirmBatch(.keepJPG) },
                         onKeepRAW: { confirmBatch(.keepRAW) },
-                        onSplit: { confirmBatch(.split) }
+                        onSplit: { confirmBatch(.split) },
+                        onExportHDR: { confirmBatchHDR("adaptiveHDR") },
+                        onExportUltraHDR: { confirmBatchHDR("ultraHDR") }
                     )
                 }
             }
@@ -254,8 +257,14 @@ struct GalleryView: View {
     }
 
     private var batchConfirmMessage: String {
-        guard let action = pendingBatchAction else { return "" }
         let count = selectedIDs.count
+        if let hdrType = pendingBatchHDRType {
+            let format = hdrType == "adaptiveHDR"
+                ? String(localized: "Adaptive HDR (HEIF)")
+                : String(localized: "Ultra HDR (JPEG)")
+            return String(localized: "Export \(count) photos as \(format)")
+        }
+        guard let action = pendingBatchAction else { return "" }
         let actionLine: String
         switch action {
         case .keepJPG: actionLine = String(localized: "Keep JPG for \(count) photos")
@@ -267,16 +276,51 @@ struct GalleryView: View {
 
     private func confirmBatch(_ action: SplitAction) {
         pendingBatchAction = action
+        pendingBatchHDRType = nil
+        showBatchConfirm = true
+    }
+
+    private func confirmBatchHDR(_ type: String) {
+        pendingBatchHDRType = type
+        pendingBatchAction = nil
         showBatchConfirm = true
     }
 
     private func executeBatch() {
-        guard let action = pendingBatchAction else { return }
         let selected = manager.pairs.filter { selectedIDs.contains($0.id) }
-        Task {
-            let result = await manager.performBatchAction(action, on: selected)
-            batchResultMessage = String(localized: "Successfully processed \(result.success), failed \(result.failed).")
-            showBatchResult = true
+
+        if let hdrType = pendingBatchHDRType {
+            Task {
+                manager.isBatchProcessing = true
+                manager.batchTotal = selected.count
+                manager.batchProgress = 0
+                var success = 0
+                var failed = 0
+
+                for pair in selected {
+                    do {
+                        if hdrType == "adaptiveHDR" {
+                            try await manager.exportAdaptiveHDR(for: pair)
+                        } else {
+                            try await manager.exportUltraHDRJPEG(for: pair)
+                        }
+                        success += 1
+                    } catch {
+                        failed += 1
+                    }
+                    manager.batchProgress += 1
+                }
+
+                manager.isBatchProcessing = false
+                batchResultMessage = String(localized: "Successfully processed \(success), failed \(failed).")
+                showBatchResult = true
+            }
+        } else if let action = pendingBatchAction {
+            Task {
+                let result = await manager.performBatchAction(action, on: selected)
+                batchResultMessage = String(localized: "Successfully processed \(result.success), failed \(result.failed).")
+                showBatchResult = true
+            }
         }
     }
 }

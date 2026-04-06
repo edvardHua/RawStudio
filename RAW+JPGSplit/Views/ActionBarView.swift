@@ -7,6 +7,10 @@ struct ActionBarView: View {
     var onExportHDR: (() -> Void)?
     var onExportUltraHDR: (() -> Void)?
 
+    private var hasBasicActions: Bool {
+        onKeepJPG != nil || onKeepRAW != nil || onSplit != nil
+    }
+
     var body: some View {
         HStack(spacing: 0) {
             if let onKeepJPG {
@@ -20,9 +24,22 @@ struct ActionBarView: View {
                 if onKeepJPG != nil || onKeepRAW != nil { divider }
                 actionButton(title: "Split", icon: "rectangle.split.2x1", action: onSplit)
             }
-            if onExportHDR != nil || onExportUltraHDR != nil {
-                if onKeepJPG != nil || onKeepRAW != nil || onSplit != nil { divider }
-                hdrMenuButton
+
+            if hasBasicActions {
+                // When mixed with keep/split, show HDR as a single menu
+                if onExportHDR != nil || onExportUltraHDR != nil {
+                    divider
+                    hdrMenuButton
+                }
+            } else {
+                // HDR-only mode: show as separate buttons
+                if let onExportHDR {
+                    actionButton(title: "Adaptive HDR", icon: "photo.badge.checkmark", action: onExportHDR)
+                }
+                if let onExportUltraHDR {
+                    if onExportHDR != nil { divider }
+                    actionButton(title: "Ultra HDR", icon: "photo.badge.arrow.down", action: onExportUltraHDR)
+                }
             }
         }
         .padding(.vertical, 8)
@@ -72,13 +89,23 @@ struct ActionBarView: View {
     }
 }
 
-#Preview {
+#Preview("Full") {
     VStack {
         Spacer()
         ActionBarView(
             onKeepJPG: {},
             onKeepRAW: {},
             onSplit: {},
+            onExportHDR: {},
+            onExportUltraHDR: {}
+        )
+    }
+}
+
+#Preview("HDR Only") {
+    VStack {
+        Spacer()
+        ActionBarView(
             onExportHDR: {},
             onExportUltraHDR: {}
         )
