@@ -117,13 +117,23 @@ struct CompareView: View {
             }
             .safeAreaInset(edge: .bottom) {
                 if currentPair != nil && !isLoadingImages && !isProcessing {
-                    ActionBarView(
-                        onKeepJPG: { performAction(.keepJPG) },
-                        onKeepRAW: { performAction(.keepRAW) },
-                        onSplit: { performAction(.split) },
-                        onExportHDR: { exportHDR() },
-                        onExportUltraHDR: { exportUltraHDR() }
-                    )
+                    if showingRAW {
+                        ActionBarView(
+                            onKeepJPG: nil,
+                            onKeepRAW: nil,
+                            onSplit: nil,
+                            onExportHDR: { exportHDR() },
+                            onExportUltraHDR: { exportUltraHDR() }
+                        )
+                    } else {
+                        ActionBarView(
+                            onKeepJPG: { performAction(.keepJPG) },
+                            onKeepRAW: { performAction(.keepRAW) },
+                            onSplit: { performAction(.split) },
+                            onExportHDR: { exportHDR() },
+                            onExportUltraHDR: { exportUltraHDR() }
+                        )
+                    }
                 }
             }
             .toast(message: toastMessage, isPresented: $showToast)

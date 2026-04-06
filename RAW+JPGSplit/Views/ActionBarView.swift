@@ -1,21 +1,27 @@
 import SwiftUI
 
 struct ActionBarView: View {
-    let onKeepJPG: () -> Void
-    let onKeepRAW: () -> Void
-    let onSplit: () -> Void
+    var onKeepJPG: (() -> Void)?
+    var onKeepRAW: (() -> Void)?
+    var onSplit: (() -> Void)?
     var onExportHDR: (() -> Void)?
     var onExportUltraHDR: (() -> Void)?
 
     var body: some View {
         HStack(spacing: 0) {
-            actionButton(title: "Keep JPG", icon: "photo", action: onKeepJPG)
-            divider
-            actionButton(title: "Keep RAW", icon: "camera.filters", action: onKeepRAW)
-            divider
-            actionButton(title: "Split", icon: "rectangle.split.2x1", action: onSplit)
+            if let onKeepJPG {
+                actionButton(title: "Keep JPG", icon: "photo", action: onKeepJPG)
+            }
+            if let onKeepRAW {
+                if onKeepJPG != nil { divider }
+                actionButton(title: "Keep RAW", icon: "camera.filters", action: onKeepRAW)
+            }
+            if let onSplit {
+                if onKeepJPG != nil || onKeepRAW != nil { divider }
+                actionButton(title: "Split", icon: "rectangle.split.2x1", action: onSplit)
+            }
             if onExportHDR != nil || onExportUltraHDR != nil {
-                divider
+                if onKeepJPG != nil || onKeepRAW != nil || onSplit != nil { divider }
                 hdrMenuButton
             }
         }
