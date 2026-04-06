@@ -100,7 +100,8 @@ struct CompareView: View {
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    if !isLoadingImages && !isProcessing {
+                    // Only show toggle when pair has both RAW and JPG
+                    if let pair = currentPair, !pair.isRawOnly, !isLoadingImages, !isProcessing {
                         Button {
                             zoomState = ZoomState()
                             showingRAW.toggle()
@@ -116,16 +117,15 @@ struct CompareView: View {
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                if currentPair != nil && !isLoadingImages && !isProcessing {
-                    if showingRAW {
+                if let pair = currentPair, !isLoadingImages, !isProcessing {
+                    if pair.isRawOnly || showingRAW {
+                        // RAW-only or viewing RAW: show two HDR buttons
                         ActionBarView(
-                            onKeepJPG: nil,
-                            onKeepRAW: nil,
-                            onSplit: nil,
                             onExportHDR: { exportHDR() },
                             onExportUltraHDR: { exportUltraHDR() }
                         )
                     } else {
+                        // Viewing JPG of a pair: show keep/split + HDR menu
                         ActionBarView(
                             onKeepJPG: { performAction(.keepJPG) },
                             onKeepRAW: { performAction(.keepRAW) },
@@ -249,13 +249,20 @@ struct CompareView: View {
         guard let pair = currentPair else { return }
         isLoadingImages = true
         do {
-            async let jpgLoad = manager.loadJPGImageWithMetadata(for: pair)
-            async let rawLoad = manager.loadRAWImageWithMetadata(for: pair)
-            let (jpgResult, rawResult) = try await (jpgLoad, rawLoad)
-            jpgImage = jpgResult.0
-            jpgMetadata = jpgResult.1
+            // Always load RAW
+            let rawResult = try await manager.loadRAWImageWithMetadata(for: pair)
             rawImage = rawResult.0
             rawMetadata = rawResult.1
+
+            // Load JPG only if available
+            if let jpgResult = try await manager.loadJPGImageWithMetadata(for: pair) {
+                jpgImage = jpgResult.0
+                jpgMetadata = jpgResult.1
+            } else {
+                jpgImage = nil
+                jpgMetadata = nil
+            }
+
             showingRAW = true
             zoomState = ZoomState()
         } catch {

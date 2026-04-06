@@ -11,7 +11,7 @@ enum ProcessResult: Equatable {
 final class PhotoPair: Identifiable {
     let id: String
     let asset: PHAsset
-    let jpgResource: PHAssetResource
+    let jpgResource: PHAssetResource?
     let rawResource: PHAssetResource
     let captureDate: Date
     let fileName: String
@@ -22,13 +22,16 @@ final class PhotoPair: Identifiable {
 
     var isProcessed: Bool { processResult != nil }
 
-    init(asset: PHAsset, jpgResource: PHAssetResource, rawResource: PHAssetResource) {
+    /// True when this asset has only RAW, no JPG pair
+    var isRawOnly: Bool { jpgResource == nil }
+
+    init(asset: PHAsset, jpgResource: PHAssetResource?, rawResource: PHAssetResource) {
         self.id = asset.localIdentifier
         self.asset = asset
         self.jpgResource = jpgResource
         self.rawResource = rawResource
         self.captureDate = asset.creationDate ?? Date.distantPast
-        self.fileName = jpgResource.originalFilename
+        self.fileName = (jpgResource ?? rawResource).originalFilename
         self.rawFormatLabel = Self.formatLabel(for: rawResource)
         self.thumbnail = nil
         self.processResult = nil

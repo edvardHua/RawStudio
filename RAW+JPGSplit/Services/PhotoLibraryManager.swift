@@ -152,8 +152,9 @@ final class PhotoLibraryManager {
                 }
             }
 
-            if let jpg = jpgResource, let raw = rawResource {
-                let pair = PhotoPair(asset: asset, jpgResource: jpg, rawResource: raw)
+            // RAW+JPG pair or RAW-only
+            if let raw = rawResource {
+                let pair = PhotoPair(asset: asset, jpgResource: jpgResource, rawResource: raw)
                 foundPairs.append(pair)
             }
         }
@@ -190,8 +191,8 @@ final class PhotoLibraryManager {
     private let ciContext = CIContext()
 
     /// Load JPG image and metadata from resource data
-    func loadJPGImageWithMetadata(for pair: PhotoPair) async throws -> (UIImage, PhotoMetadata) {
-        let resource = pair.jpgResource
+    func loadJPGImageWithMetadata(for pair: PhotoPair) async throws -> (UIImage, PhotoMetadata)? {
+        guard let resource = pair.jpgResource else { return nil }
         let data = try await extractResourceData(for: resource)
         guard let image = UIImage(data: data) else {
             throw SplitError.extractionFailed("Cannot decode image data for \(resource.originalFilename)")
@@ -328,10 +329,17 @@ final class PhotoLibraryManager {
     }
 
     func performAction(_ action: SplitAction, on pair: PhotoPair) async throws {
+        guard !pair.isRawOnly else {
+            throw SplitError.extractionFailed("Cannot perform this action on RAW-only photos")
+        }
+        guard let jpgResource = pair.jpgResource else {
+            throw SplitError.extractionFailed("No JPG resource found")
+        }
+
         switch action {
         case .keepJPG:
-            let jpgData = try await extractResourceData(for: pair.jpgResource)
-            try await saveAsNewAsset(data: jpgData, resourceType: .photo, originalFilename: pair.jpgResource.originalFilename)
+            let jpgData = try await extractResourceData(for: jpgResource)
+            try await saveAsNewAsset(data: jpgData, resourceType: .photo, originalFilename: jpgResource.originalFilename)
             await deleteAssetSilently(pair.asset)
             pair.processResult = .keptJPG
 
@@ -342,9 +350,9 @@ final class PhotoLibraryManager {
             pair.processResult = .keptRAW
 
         case .split:
-            let jpgData = try await extractResourceData(for: pair.jpgResource)
+            let jpgData = try await extractResourceData(for: jpgResource)
             let rawData = try await extractResourceData(for: pair.rawResource)
-            try await saveAsNewAsset(data: jpgData, resourceType: .photo, originalFilename: pair.jpgResource.originalFilename)
+            try await saveAsNewAsset(data: jpgData, resourceType: .photo, originalFilename: jpgResource.originalFilename)
             try await saveAsNewAsset(data: rawData, resourceType: .photo, originalFilename: pair.rawResource.originalFilename)
             await deleteAssetSilently(pair.asset)
             pair.processResult = .split

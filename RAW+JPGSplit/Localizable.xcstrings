@@ -21,6 +21,17 @@
         }
       }
     },
+    "Adaptive HDR" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adaptive HDR"
+          }
+        }
+      }
+    },
     "Adaptive HDR (HEIF)" : {
       "localizations" : {
         "zh-Hans" : {
@@ -128,6 +139,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "错误"
+          }
+        }
+      }
+    },
+    "Export %lld photos as %@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "导出 %lld 张照片为 %@"
           }
         }
       }
@@ -284,22 +305,22 @@
         }
       }
     },
-    "No Paired Photos" : {
+    "No RAW Photos" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "没有配对照片"
+            "value" : "没有 RAW 照片"
           }
         }
       }
     },
-    "No RAW+JPG paired photos found. Import camera photos to your library and paired photos will appear here automatically." : {
+    "No RAW photos found. Import camera photos to your library and they will appear here automatically." : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "未找到 RAW+JPG 配对照片。将相机照片导入到相册后，配对照片会自动显示在这里。"
+            "value" : "未找到 RAW 照片。将相机照片导入到相册后，会自动显示在这里。"
           }
         }
       }
@@ -505,6 +526,17 @@
         }
       }
     },
+    "Ultra HDR" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ultra HDR"
+          }
+        }
+      }
+    },
     "Ultra HDR (JPEG)" : {
       "localizations" : {
         "zh-Hans" : {
@@ -531,36 +563,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "未处理"
-          }
-        }
-      }
-    },
-    "Export %lld photos as %@" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "导出 %lld 张照片为 %@"
-          }
-        }
-      }
-    },
-    "Adaptive HDR" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Adaptive HDR"
-          }
-        }
-      }
-    },
-    "Ultra HDR" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ultra HDR"
           }
         }
       }
