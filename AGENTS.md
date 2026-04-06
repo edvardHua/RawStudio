@@ -35,11 +35,13 @@ RAW+JPGSplit/
 │   ├── Album.swift                    # Wraps PHAssetCollection
 │   ├── PhotoMetadata.swift            # EXIF extraction via CGImageSource
 │   ├── RAWEditParams.swift            # 15+ CIRAWFilter parameters (Codable)
-│   └── JPGEditParams.swift            # CIFilter chain parameters (Codable)
+│   ├── JPGEditParams.swift            # CIFilter chain parameters (Codable)
+│   └── LayerEditParams.swift          # Per-layer edit params + LayerEdits collection
 ├── Services/
 │   ├── PhotoLibraryManager.swift      # Core service: fetch, thumbnail, export, operations
 │   ├── RAWEditPresetStore.swift       # Persistence for edit params and named presets
-│   └── UltraHDRWriter.swift           # Ultra HDR JPEG encoder (MPF + gain map)
+│   ├── UltraHDRWriter.swift           # Ultra HDR JPEG encoder (MPF + gain map)
+│   └── SegmentationService.swift      # Vision framework segmentation mask generation
 ├── Views/
 │   ├── GalleryView.swift              # Main list/grid with filters, batch selection
 │   ├── PhotoCardView.swift            # List item cell
@@ -49,6 +51,7 @@ RAW+JPGSplit/
 │   ├── RAWEditorView.swift            # Full-screen RAW editor (CIRAWFilter)
 │   ├── JPGEditorView.swift            # Full-screen JPG editor (CIFilter chain)
 │   ├── RAWPresetPickerView.swift      # Preset selection sheet
+│   ├── LayerSelectorView.swift        # Layer selector bar + layer parameter sliders
 │   ├── ActionBarView.swift            # Bottom action buttons (keep/split/HDR)
 │   ├── BatchProgressView.swift        # Batch operation overlay
 │   ├── ToastView.swift                # Lightweight top toast
