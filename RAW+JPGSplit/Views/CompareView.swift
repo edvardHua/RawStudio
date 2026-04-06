@@ -120,7 +120,8 @@ struct CompareView: View {
                     ActionBarView(
                         onKeepJPG: { performAction(.keepJPG) },
                         onKeepRAW: { performAction(.keepRAW) },
-                        onSplit: { performAction(.split) }
+                        onSplit: { performAction(.split) },
+                        onExportHDR: { exportHDR() }
                     )
                 }
             }
@@ -294,6 +295,26 @@ struct CompareView: View {
         }
         let nextIndex = min(currentIndex, remaining.count - 1)
         navigateTo(nextIndex)
+    }
+
+    private func exportHDR() {
+        guard let pair = currentPair, !isProcessing else { return }
+        Task {
+            isProcessing = true
+            processingMessage = String(localized: "Exporting HDR...")
+
+            do {
+                try await manager.exportAdaptiveHDR(for: pair)
+                isProcessing = false
+
+                toastMessage = String(localized: "HDR photo exported to library")
+                withAnimation { showToast = true }
+            } catch {
+                isProcessing = false
+                errorMessage = error.localizedDescription
+                showError = true
+            }
+        }
     }
 
     private func navigateTo(_ index: Int) {

@@ -245,6 +245,55 @@ final class PhotoLibraryManager {
 
     // MARK: - Core Operations
 
+    /// Export Adaptive HDR HEIF from RAW data
+    func exportAdaptiveHDR(for pair: PhotoPair) async throws {
+        let rawData = try await extractResourceData(for: pair.rawResource)
+
+        guard let rawFilter = CIRAWFilter(imageData: rawData, identifierHint: pair.rawResource.uniformTypeIdentifier) else {
+            throw SplitError.extractionFailed("Cannot create RAW filter for \(pair.rawResource.originalFilename)")
+        }
+
+        // Render SDR version
+        rawFilter.extendedDynamicRangeAmount = 0.0
+        guard let sdrImage = rawFilter.outputImage else {
+            throw SplitError.extractionFailed("Cannot render SDR image from RAW")
+        }
+
+        // Render HDR version
+        rawFilter.extendedDynamicRangeAmount = 1.0
+        guard let hdrImage = rawFilter.outputImage else {
+            throw SplitError.extractionFailed("Cannot render HDR image from RAW")
+        }
+
+        // Write Adaptive HDR HEIF to temp file
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("heic")
+
+        guard let colorSpace = CGColorSpace(name: CGColorSpace.displayP3) else {
+            throw SplitError.writeFailed("Cannot create Display P3 color space")
+        }
+
+        try ciContext.writeHEIFRepresentation(
+            of: sdrImage,
+            to: tempURL,
+            format: .RGBA8,
+            colorSpace: colorSpace,
+            options: [.hdrImage: hdrImage]
+        )
+
+        // Read the HEIF data and save to photo library
+        let heifData = try Data(contentsOf: tempURL)
+        try? FileManager.default.removeItem(at: tempURL)
+
+        try await saveAsNewAsset(
+            data: heifData,
+            resourceType: .photo,
+            originalFilename: (pair.rawResource.originalFilename as NSString)
+                .deletingPathExtension + "_HDR.heic"
+        )
+    }
+
     func performAction(_ action: SplitAction, on pair: PhotoPair) async throws {
         switch action {
         case .keepJPG:

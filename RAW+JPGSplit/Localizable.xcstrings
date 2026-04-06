@@ -464,6 +464,36 @@
           }
         }
       }
+    },
+    "HDR" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HDR"
+          }
+        }
+      }
+    },
+    "Exporting HDR..." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在导出 HDR…"
+          }
+        }
+      }
+    },
+    "HDR photo exported to library" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HDR 照片已导出到图库"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"
