@@ -200,7 +200,8 @@ struct GalleryView: View {
                             pair: pair,
                             isSelecting: isSelecting,
                             isSelected: selectedIDs.contains(pair.id),
-                            onToggleSelect: { toggleSelect(pair.id) }
+                            onToggleSelect: { toggleSelect(pair.id) },
+                            manager: manager
                         )
                         .contentShape(Rectangle())
                         .onTapGesture { handleTap(pair) }
@@ -221,7 +222,8 @@ struct GalleryView: View {
                     PhotoGridItemView(
                         pair: pair,
                         isSelecting: isSelecting,
-                        isSelected: selectedIDs.contains(pair.id)
+                        isSelected: selectedIDs.contains(pair.id),
+                        manager: manager
                     )
                     .onTapGesture { handleTap(pair) }
                 }

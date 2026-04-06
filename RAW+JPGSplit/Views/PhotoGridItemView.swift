@@ -4,6 +4,7 @@ struct PhotoGridItemView: View {
     let pair: PhotoPair
     let isSelecting: Bool
     let isSelected: Bool
+    var manager: PhotoLibraryManager?
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -67,6 +68,11 @@ struct PhotoGridItemView: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: 4))
         .opacity(pair.isProcessed ? 0.5 : 1.0)
+        .task {
+            if let manager {
+                await manager.loadThumbnail(for: pair)
+            }
+        }
     }
 
     private func resultLabel(_ result: ProcessResult) -> String {

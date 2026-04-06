@@ -140,33 +140,30 @@ final class PhotoLibraryManager {
         }
 
         self.pairs = foundPairs
-        await loadThumbnails()
     }
 
     // MARK: - Thumbnails
 
-    private func loadThumbnails() async {
+    func loadThumbnail(for pair: PhotoPair) async {
+        guard pair.thumbnail == nil else { return }
+
         let options = PHImageRequestOptions()
-        options.deliveryMode = .opportunistic
+        options.deliveryMode = .fastFormat
         options.resizeMode = .fast
         options.isNetworkAccessAllowed = true
+        options.isSynchronous = false
 
-        for pair in pairs where pair.thumbnail == nil {
-            let image = await withCheckedContinuation { (continuation: CheckedContinuation<UIImage?, Never>) in
-                cachingManager.requestImage(
-                    for: pair.asset,
-                    targetSize: thumbnailSize,
-                    contentMode: .aspectFill,
-                    options: options
-                ) { image, info in
-                    let isDegraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
-                    if !isDegraded {
-                        continuation.resume(returning: image)
-                    }
-                }
+        let image = await withCheckedContinuation { (continuation: CheckedContinuation<UIImage?, Never>) in
+            cachingManager.requestImage(
+                for: pair.asset,
+                targetSize: thumbnailSize,
+                contentMode: .aspectFill,
+                options: options
+            ) { image, _ in
+                continuation.resume(returning: image)
             }
-            pair.thumbnail = image
         }
+        pair.thumbnail = image
     }
 
     // MARK: - Load Full Images for Compare
@@ -321,10 +318,15 @@ final class PhotoLibraryManager {
     }
 
     /// Groups pairs by date for section headers
-    func groupedByDate(_ pairsToGroup: [PhotoPair]) -> [(date: String, pairs: [PhotoPair])] {
+    private static let groupDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .long
         formatter.timeStyle = .none
+        return formatter
+    }()
+
+    func groupedByDate(_ pairsToGroup: [PhotoPair]) -> [(date: String, pairs: [PhotoPair])] {
+        let formatter = Self.groupDateFormatter
 
         let grouped = Dictionary(grouping: pairsToGroup) { pair in
             formatter.string(from: pair.captureDate)

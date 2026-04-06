@@ -5,6 +5,7 @@ struct PhotoCardView: View {
     let isSelecting: Bool
     let isSelected: Bool
     let onToggleSelect: () -> Void
+    var manager: PhotoLibraryManager?
 
     private static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -78,6 +79,11 @@ struct PhotoCardView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .opacity(pair.isProcessed ? 0.5 : 1.0)
+        .task {
+            if let manager {
+                await manager.loadThumbnail(for: pair)
+            }
+        }
     }
 
     private func resultLabel(_ result: ProcessResult) -> String {

@@ -21,12 +21,32 @@
         }
       }
     },
+    "Albums" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "相簿"
+          }
+        }
+      }
+    },
     "All" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "全部"
+          }
+        }
+      }
+    },
+    "All Photos" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "所有照片"
           }
         }
       }
@@ -112,6 +132,16 @@
         }
       }
     },
+    "Grid View" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "网格视图"
+          }
+        }
+      }
+    },
     "JPG" : {
       "localizations" : {
         "zh-Hans" : {
@@ -180,6 +210,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已保留 RAW"
+          }
+        }
+      }
+    },
+    "List View" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "列表视图"
+          }
+        }
+      }
+    },
+    "Menu" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "菜单"
           }
         }
       }
@@ -275,6 +325,7 @@
       }
     },
     "RAW+JPG" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -410,56 +461,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "未处理"
-          }
-        }
-      }
-    },
-    "All Photos" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "所有照片"
-          }
-        }
-      }
-    },
-    "Albums" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "相簿"
-          }
-        }
-      }
-    },
-    "Grid View" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "网格视图"
-          }
-        }
-      }
-    },
-    "List View" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "列表视图"
-          }
-        }
-      }
-    },
-    "Menu" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "菜单"
           }
         }
       }
