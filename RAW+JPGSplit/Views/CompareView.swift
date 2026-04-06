@@ -14,7 +14,7 @@ struct CompareView: View {
     @State private var isLoadingImages = true
     @State private var isProcessing = false
     @State private var processingMessage = ""
-    @State private var showingRAW = false
+    @State private var showingRAW = true
     @State private var zoomState = ZoomState()
     @State private var showToast = false
     @State private var toastMessage = ""
@@ -245,7 +245,7 @@ struct CompareView: View {
             jpgMetadata = jpgResult.1
             rawImage = rawResult.0
             rawMetadata = rawResult.1
-            showingRAW = false
+            showingRAW = true
             zoomState = ZoomState()
         } catch {
             errorMessage = error.localizedDescription

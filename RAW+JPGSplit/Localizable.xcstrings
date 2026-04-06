@@ -122,6 +122,16 @@
         }
       }
     },
+    "Exporting HDR..." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在导出 HDR…"
+          }
+        }
+      }
+    },
     "Filter" : {
       "localizations" : {
         "zh-Hans" : {
@@ -138,6 +148,27 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "网格视图"
+          }
+        }
+      }
+    },
+    "HDR" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HDR"
+          }
+        }
+      }
+    },
+    "HDR photo exported to library" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HDR 照片已导出到图库"
           }
         }
       }
@@ -461,36 +492,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "未处理"
-          }
-        }
-      }
-    },
-    "HDR" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "HDR"
-          }
-        }
-      }
-    },
-    "Exporting HDR..." : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "正在导出 HDR…"
-          }
-        }
-      }
-    },
-    "HDR photo exported to library" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "HDR 照片已导出到图库"
           }
         }
       }
