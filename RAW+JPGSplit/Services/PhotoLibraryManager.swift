@@ -160,66 +160,69 @@ final class PhotoLibraryManager {
         let progress: String // e.g. "50/120"
     }
 
-    /// Scan with batch streaming — yields results progressively
+    /// Scan with batch streaming — yields results progressively from background thread
     nonisolated private static func scanForPairsBatched(in album: Album?) -> AsyncStream<ScanBatch> {
-        AsyncStream { continuation in
-            let fetchOptions = PHFetchOptions()
-            fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
-            fetchOptions.predicate = NSPredicate(
-                format: "mediaType == %d",
-                PHAssetMediaType.image.rawValue
-            )
+        AsyncStream(bufferingPolicy: .bufferingNewest(10)) { continuation in
+            // Run the heavy scanning on a background thread
+            Task.detached(priority: .userInitiated) {
+                let fetchOptions = PHFetchOptions()
+                fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+                fetchOptions.predicate = NSPredicate(
+                    format: "mediaType == %d",
+                    PHAssetMediaType.image.rawValue
+                )
 
-            let result: PHFetchResult<PHAsset>
-            if let album = album {
-                result = PHAsset.fetchAssets(in: album.collection, options: fetchOptions)
-            } else {
-                result = PHAsset.fetchAssets(with: fetchOptions)
-            }
+                let result: PHFetchResult<PHAsset>
+                if let album = album {
+                    result = PHAsset.fetchAssets(in: album.collection, options: fetchOptions)
+                } else {
+                    result = PHAsset.fetchAssets(with: fetchOptions)
+                }
 
-            let totalCount = result.count
-            var batchBuffer: [PhotoPair] = []
-            var scannedCount = 0
+                let totalCount = result.count
+                var batchBuffer: [PhotoPair] = []
+                var scannedCount = 0
 
-            result.enumerateObjects { asset, _, _ in
-                let resources = PHAssetResource.assetResources(for: asset)
-                var jpgResource: PHAssetResource?
-                var rawResource: PHAssetResource?
+                result.enumerateObjects { asset, _, _ in
+                    let resources = PHAssetResource.assetResources(for: asset)
+                    var jpgResource: PHAssetResource?
+                    var rawResource: PHAssetResource?
 
-                for resource in resources {
-                    if resource.type == .alternatePhoto {
-                        rawResource = resource
-                    } else if resource.type == .photo {
-                        if Self.isRAWType(resource.uniformTypeIdentifier) {
+                    for resource in resources {
+                        if resource.type == .alternatePhoto {
                             rawResource = resource
-                        } else {
-                            jpgResource = resource
+                        } else if resource.type == .photo {
+                            if isRAWType(resource.uniformTypeIdentifier) {
+                                rawResource = resource
+                            } else {
+                                jpgResource = resource
+                            }
                         }
+                    }
+
+                    if let raw = rawResource {
+                        let pair = PhotoPair(asset: asset, jpgResource: jpgResource, rawResource: raw)
+                        batchBuffer.append(pair)
+                    }
+
+                    scannedCount += 1
+
+                    // Yield batch when buffer is full
+                    if batchBuffer.count >= batchSize {
+                        let progress = "\(scannedCount)/\(totalCount)"
+                        continuation.yield(ScanBatch(pairs: batchBuffer, progress: progress))
+                        batchBuffer.removeAll(keepingCapacity: true)
                     }
                 }
 
-                if let raw = rawResource {
-                    let pair = PhotoPair(asset: asset, jpgResource: jpgResource, rawResource: raw)
-                    batchBuffer.append(pair)
-                }
-
-                scannedCount += 1
-
-                // Yield batch when buffer is full
-                if batchBuffer.count >= batchSize {
+                // Yield remaining
+                if !batchBuffer.isEmpty {
                     let progress = "\(scannedCount)/\(totalCount)"
                     continuation.yield(ScanBatch(pairs: batchBuffer, progress: progress))
-                    batchBuffer.removeAll(keepingCapacity: true)
                 }
-            }
 
-            // Yield remaining
-            if !batchBuffer.isEmpty {
-                let progress = "\(scannedCount)/\(totalCount)"
-                continuation.yield(ScanBatch(pairs: batchBuffer, progress: progress))
+                continuation.finish()
             }
-
-            continuation.finish()
         }
     }
 
