@@ -80,8 +80,18 @@ struct GalleryView: View {
         NavigationStack {
             ZStack {
                 if manager.isLoading {
-                    ProgressView("Scanning library...")
-                } else if manager.pairs.isEmpty {
+                    VStack(spacing: 16) {
+                        ProgressView()
+                            .scaleEffect(1.5)
+                        Text("Scanning library...")
+                            .font(.headline)
+                            .foregroundStyle(.secondary)
+                        Text("This may take a moment for large libraries")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if filteredPairs.isEmpty {
                     EmptyStateView()
                 } else {
                     if layout == .list {

@@ -125,14 +125,24 @@ final class PhotoLibraryManager {
 
     func fetchPairedAssets() async {
         isLoading = true
-        defer { isLoading = false }
 
+        let album = selectedAlbum
+        let foundPairs = await Task.detached {
+            Self.scanForPairs(in: album)
+        }.value
+
+        self.pairs = foundPairs
+        isLoading = false
+    }
+
+    /// Heavy scanning work — runs off main thread
+    nonisolated private static func scanForPairs(in album: Album?) -> [PhotoPair] {
         let fetchOptions = PHFetchOptions()
         fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
         fetchOptions.predicate = NSPredicate(format: "mediaType == %d", PHAssetMediaType.image.rawValue)
 
         let result: PHFetchResult<PHAsset>
-        if let album = selectedAlbum {
+        if let album = album {
             result = PHAsset.fetchAssets(in: album.collection, options: fetchOptions)
         } else {
             result = PHAsset.fetchAssets(with: fetchOptions)
@@ -146,10 +156,8 @@ final class PhotoLibraryManager {
 
             for resource in resources {
                 if resource.type == .alternatePhoto {
-                    // In a RAW+JPG pair, the alternate is always the RAW
                     rawResource = resource
                 } else if resource.type == .photo {
-                    // Check if this "photo" is actually a RAW file
                     if Self.isRAWType(resource.uniformTypeIdentifier) {
                         rawResource = resource
                     } else {
@@ -158,14 +166,13 @@ final class PhotoLibraryManager {
                 }
             }
 
-            // RAW+JPG pair or RAW-only
             if let raw = rawResource {
                 let pair = PhotoPair(asset: asset, jpgResource: jpgResource, rawResource: raw)
                 foundPairs.append(pair)
             }
         }
 
-        self.pairs = foundPairs
+        return foundPairs
     }
 
     // MARK: - Thumbnails

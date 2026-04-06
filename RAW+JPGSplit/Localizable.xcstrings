@@ -881,6 +881,13 @@
           }
         }
       }
+    },
+    "This may take a moment for large libraries" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : { "state" : "translated", "value" : "大型图库可能需要一些时间" }
+        }
+      }
     }
   },
   "version" : "1.0"
