@@ -1,0 +1,23 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "NSPhotoLibraryUsageDescription" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "RAW+JPG Split needs access to your photo library to find RAW+JPG paired photos, compare them, and save separated versions."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "RAW+JPG Split 需要访问你的照片图库，以查找 RAW+JPG 配对照片、进行对比，并保存分离后的版本。"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

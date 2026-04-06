@@ -82,9 +82,9 @@ struct PhotoCardView: View {
 
     private func resultLabel(_ result: ProcessResult) -> String {
         switch result {
-        case .keptJPG: return "Kept JPG"
-        case .keptRAW: return "Kept RAW"
-        case .split: return "Split"
+        case .keptJPG: return String(localized: "Kept JPG")
+        case .keptRAW: return String(localized: "Kept RAW")
+        case .split: return String(localized: "Split")
         }
     }
 }

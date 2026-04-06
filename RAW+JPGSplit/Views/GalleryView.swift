@@ -1,9 +1,17 @@
 import SwiftUI
 
-enum GalleryFilter: String, CaseIterable {
-    case all = "All"
-    case unprocessed = "Unprocessed"
-    case processed = "Processed"
+enum GalleryFilter: CaseIterable {
+    case all
+    case unprocessed
+    case processed
+
+    var label: String {
+        switch self {
+        case .all: return String(localized: "All")
+        case .unprocessed: return String(localized: "Unprocessed")
+        case .processed: return String(localized: "Processed")
+        }
+    }
 }
 
 struct GalleryView: View {
@@ -55,7 +63,7 @@ struct GalleryView: View {
                         Menu {
                             Picker("Filter", selection: $filter) {
                                 ForEach(GalleryFilter.allCases, id: \.self) { f in
-                                    Text(f.rawValue).tag(f)
+                                    Text(f.label).tag(f)
                                 }
                             }
                         } label: {
@@ -152,13 +160,13 @@ struct GalleryView: View {
     private var batchConfirmMessage: String {
         guard let action = pendingBatchAction else { return "" }
         let count = selectedIDs.count
-        let actionName: String
+        let actionLine: String
         switch action {
-        case .keepJPG: actionName = "Keep JPG for"
-        case .keepRAW: actionName = "Keep RAW for"
-        case .split: actionName = "Split"
+        case .keepJPG: actionLine = String(localized: "Keep JPG for \(count) photos")
+        case .keepRAW: actionLine = String(localized: "Keep RAW for \(count) photos")
+        case .split: actionLine = String(localized: "Split \(count) photos")
         }
-        return "\(actionName) \(count) photos. Original RAW+JPG paired photos will be deleted. They can be recovered from Recently Deleted."
+        return actionLine + "\n" + String(localized: "Original RAW+JPG paired photos will be deleted. They can be recovered from Recently Deleted.")
     }
 
     private func confirmBatch(_ action: SplitAction) {
@@ -171,7 +179,7 @@ struct GalleryView: View {
         let selected = manager.pairs.filter { selectedIDs.contains($0.id) }
         Task {
             let result = await manager.performBatchAction(action, on: selected)
-            batchResultMessage = "Successfully processed \(result.success), failed \(result.failed)."
+            batchResultMessage = String(localized: "Successfully processed \(result.success), failed \(result.failed).")
             showBatchResult = true
         }
     }

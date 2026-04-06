@@ -164,9 +164,9 @@ struct CompareView: View {
         Task {
             isProcessing = true
             switch action {
-            case .keepJPG: processingMessage = "Saving JPG..."
-            case .keepRAW: processingMessage = "Saving RAW..."
-            case .split: processingMessage = "Splitting photos..."
+            case .keepJPG: processingMessage = String(localized: "Saving JPG...")
+            case .keepRAW: processingMessage = String(localized: "Saving RAW...")
+            case .split: processingMessage = String(localized: "Splitting photos...")
             }
 
             do {
@@ -175,11 +175,11 @@ struct CompareView: View {
 
                 let actionLabel: String
                 switch action {
-                case .keepJPG: actionLabel = "Kept JPG"
-                case .keepRAW: actionLabel = "Kept RAW"
-                case .split: actionLabel = "Split into two photos"
+                case .keepJPG: actionLabel = String(localized: "Kept JPG")
+                case .keepRAW: actionLabel = String(localized: "Kept RAW")
+                case .split: actionLabel = String(localized: "Split into two photos")
                 }
-                toastMessage = "\(actionLabel) · Original can be recovered from Recently Deleted"
+                toastMessage = String(localized: "\(actionLabel) · Original can be recovered from Recently Deleted")
                 withAnimation { showToast = true }
 
                 try? await Task.sleep(for: .seconds(1.5))
