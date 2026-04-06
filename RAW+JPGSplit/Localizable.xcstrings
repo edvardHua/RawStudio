@@ -83,12 +83,44 @@
         }
       }
     },
+    "Brightness" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "亮度"
+          }
+        }
+      }
+    },
     "Cancel" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "取消"
+          }
+        }
+      }
+    },
+    "Color" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "色彩"
+          }
+        }
+      }
+    },
+    "Color NR" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "色彩降噪"
           }
         }
       }
@@ -103,12 +135,33 @@
         }
       }
     },
+    "Contrast" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "对比度"
+          }
+        }
+      }
+    },
     "Deselect All" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "取消全选"
+          }
+        }
+      }
+    },
+    "Detail" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "细节"
           }
         }
       }
@@ -129,6 +182,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在从 iCloud 下载…"
+          }
+        }
+      }
+    },
+    "Enter a name for this preset" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "为此预设输入一个名称"
           }
         }
       }
@@ -173,12 +236,33 @@
         }
       }
     },
+    "Exposure" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "曝光"
+          }
+        }
+      }
+    },
     "Filter" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "筛选"
+          }
+        }
+      }
+    },
+    "Gamut Mapping" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "色域映射"
           }
         }
       }
@@ -209,6 +293,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "HDR 照片已导出到图库"
+          }
+        }
+      }
+    },
+    "Highlight Recovery" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "高光恢复"
           }
         }
       }
@@ -285,6 +380,27 @@
         }
       }
     },
+    "Lens" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "镜头"
+          }
+        }
+      }
+    },
+    "Lens Correction" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "镜头校正"
+          }
+        }
+      }
+    },
     "List View" : {
       "localizations" : {
         "zh-Hans" : {
@@ -295,12 +411,55 @@
         }
       }
     },
+    "Local Tone Map" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "局部色调"
+          }
+        }
+      }
+    },
+    "Luminance NR" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "亮度降噪"
+          }
+        }
+      }
+    },
     "Menu" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "菜单"
+          }
+        }
+      }
+    },
+    "Moire Reduction" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "摩尔纹消除"
+          }
+        }
+      }
+    },
+    "No Presets" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "没有预设"
           }
         }
       }
@@ -361,6 +520,26 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "需要照片访问权限"
+          }
+        }
+      }
+    },
+    "Preset Name" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "预设名称"
+          }
+        }
+      }
+    },
+    "Presets" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "预设"
           }
         }
       }
@@ -435,6 +614,46 @@
         }
       }
     },
+    "Reset" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重置"
+          }
+        }
+      }
+    },
+    "Save" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存"
+          }
+        }
+      }
+    },
+    "Save Preset" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存预设"
+          }
+        }
+      }
+    },
+    "Save your current adjustments as a preset to reuse them on other photos." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "将当前调整保存为预设，以便在其他照片上重复使用。"
+          }
+        }
+      }
+    },
     "Saving JPG..." : {
       "localizations" : {
         "zh-Hans" : {
@@ -481,6 +700,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "全选"
+          }
+        }
+      }
+    },
+    "Shadows" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "阴影"
+          }
+        }
+      }
+    },
+    "Sharpness" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "锐度"
           }
         }
       }
@@ -545,6 +786,28 @@
         }
       }
     },
+    "Temperature" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "色温"
+          }
+        }
+      }
+    },
+    "Tint" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "色调"
+          }
+        }
+      }
+    },
     "Ultra HDR" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -586,178 +849,24 @@
         }
       }
     },
-    "Exposure" : {
+    "Highlights" : {
       "localizations" : {
         "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "曝光" }
+          "stringUnit" : { "state" : "translated", "value" : "高光" }
         }
       }
     },
-    "Color" : {
+    "Saturation" : {
       "localizations" : {
         "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "色彩" }
+          "stringUnit" : { "state" : "translated", "value" : "饱和度" }
         }
       }
     },
-    "Detail" : {
+    "Vibrance" : {
       "localizations" : {
         "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "细节" }
-        }
-      }
-    },
-    "Lens" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "镜头" }
-        }
-      }
-    },
-    "Brightness" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "亮度" }
-        }
-      }
-    },
-    "Shadows" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "阴影" }
-        }
-      }
-    },
-    "Contrast" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "对比度" }
-        }
-      }
-    },
-    "Local Tone Map" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "局部色调" }
-        }
-      }
-    },
-    "Highlight Recovery" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "高光恢复" }
-        }
-      }
-    },
-    "Temperature" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "色温" }
-        }
-      }
-    },
-    "Tint" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "色调" }
-        }
-      }
-    },
-    "Gamut Mapping" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "色域映射" }
-        }
-      }
-    },
-    "Sharpness" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "锐度" }
-        }
-      }
-    },
-    "Luminance NR" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "亮度降噪" }
-        }
-      }
-    },
-    "Color NR" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "色彩降噪" }
-        }
-      }
-    },
-    "Moire Reduction" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "摩尔纹消除" }
-        }
-      }
-    },
-    "Lens Correction" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "镜头校正" }
-        }
-      }
-    },
-    "Reset" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "重置" }
-        }
-      }
-    },
-    "Presets" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "预设" }
-        }
-      }
-    },
-    "Save Preset" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "保存预设" }
-        }
-      }
-    },
-    "Preset Name" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "预设名称" }
-        }
-      }
-    },
-    "Enter a name for this preset" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "为此预设输入一个名称" }
-        }
-      }
-    },
-    "No Presets" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "没有预设" }
-        }
-      }
-    },
-    "Save your current adjustments as a preset to reuse them on other photos." : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "将当前调整保存为预设，以便在其他照片上重复使用。" }
-        }
-      }
-    },
-    "Save" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "保存" }
+          "stringUnit" : { "state" : "translated", "value" : "自然饱和度" }
         }
       }
     }

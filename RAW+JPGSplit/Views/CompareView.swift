@@ -22,8 +22,11 @@ struct CompareView: View {
     @State private var errorMessage: String?
     @State private var showError = false
     @State private var showEditor = false
+    @State private var showJPGEditor = false
     @State private var cachedRawData: Data?
+    @State private var cachedJPGData: Data?
     @State private var currentEditParams = RAWEditParams()
+    @State private var currentJPGEditParams = JPGEditParams()
     @Environment(\.dismiss) private var dismiss
 
     init(manager: PhotoLibraryManager, pairs: [PhotoPair], startIndex: Int, presetStore: RAWEditPresetStore) {
@@ -191,8 +194,23 @@ struct CompareView: View {
                     initialParams: currentEditParams,
                     onDone: { params in
                         currentEditParams = params
-                        // Re-render preview with new params
                         Task { await reRenderRAWPreview() }
+                    }
+                )
+            }
+        }
+        .fullScreenCover(isPresented: $showJPGEditor) {
+            if let jpgData = cachedJPGData, let pair = currentPair {
+                JPGEditorView(
+                    imageData: jpgData,
+                    assetID: pair.id,
+                    presetStore: presetStore,
+                    initialParams: currentJPGEditParams,
+                    onDone: { params, editedImage in
+                        currentJPGEditParams = params
+                        if let editedImage {
+                            jpgImage = editedImage
+                        }
                     }
                 )
             }
@@ -287,8 +305,23 @@ struct CompareView: View {
             let rawData = try await manager.extractRawData(for: pair.rawResource)
             cachedRawData = rawData
 
+            // Cache JPG data for editor if available
+            if let jpgResource = pair.jpgResource {
+                let jpgData = try await manager.extractRawData(for: jpgResource)
+                cachedJPGData = jpgData
+            } else {
+                cachedJPGData = nil
+            }
+
             // Load saved edit params for this asset
             currentEditParams = presetStore.loadParams(for: pair.id)
+            let jpgKey = "jpgEditParams_\(pair.id)"
+            if let data = UserDefaults.standard.data(forKey: jpgKey),
+               let jpgParams = try? JSONDecoder().decode(JPGEditParams.self, from: data) {
+                currentJPGEditParams = jpgParams
+            } else {
+                currentJPGEditParams = JPGEditParams()
+            }
 
             // Always load RAW
             let rawResult = try await manager.loadRAWImageWithMetadata(for: pair, editParams: currentEditParams)
@@ -405,8 +438,13 @@ struct CompareView: View {
     }
 
     private func openEditor() {
-        guard cachedRawData != nil else { return }
-        showEditor = true
+        if showingRAW {
+            guard cachedRawData != nil else { return }
+            showEditor = true
+        } else {
+            guard cachedJPGData != nil else { return }
+            showJPGEditor = true
+        }
     }
 
     private func reRenderRAWPreview() async {
