@@ -22,7 +22,7 @@ enum GalleryLayout: String {
 struct GalleryView: View {
     @Bindable var manager: PhotoLibraryManager
     @State private var filter: GalleryFilter = .unprocessed
-    @State private var layout: GalleryLayout = .grid
+    @State private var layout: GalleryLayout = .list
     @State private var isSelecting = false
     @State private var selectedIDs: Set<String> = []
     @State private var showBatchConfirm = false
