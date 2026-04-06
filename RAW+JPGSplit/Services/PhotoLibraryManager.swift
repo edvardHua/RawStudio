@@ -1,6 +1,8 @@
 import Photos
 import UIKit
 import SwiftUI
+import CoreImage
+import CoreImage.CIFilterBuiltins
 
 enum PhotoPermissionStatus {
     case notDetermined
@@ -137,10 +139,42 @@ final class PhotoLibraryManager {
 
     // MARK: - Load Full Images for Compare
 
-    func loadFullImage(for resource: PHAssetResource) async throws -> UIImage {
+    private let ciContext = CIContext()
+
+    /// Load JPG image from resource data
+    func loadJPGImage(for resource: PHAssetResource) async throws -> UIImage {
         let data = try await extractResourceData(for: resource)
         guard let image = UIImage(data: data) else {
             throw SplitError.extractionFailed("Cannot decode image data for \(resource.originalFilename)")
+        }
+        return image
+    }
+
+    /// Load RAW image using CIRAWFilter for authentic RAW rendering
+    func loadRAWImage(for resource: PHAssetResource) async throws -> UIImage {
+        let data = try await extractResourceData(for: resource)
+
+        // Try CIRAWFilter first (iOS 15+) for proper RAW rendering
+        if let rawFilter = CIRAWFilter(imageData: data, identifierHint: resource.uniformTypeIdentifier) {
+            // Use default RAW processing — no camera JPG adjustments applied,
+            // so the result shows the RAW sensor data with basic demosaic only
+            if let outputImage = rawFilter.outputImage {
+                let extent = outputImage.extent
+                if let cgImage = ciContext.createCGImage(outputImage, from: extent) {
+                    return UIImage(cgImage: cgImage)
+                }
+            }
+        }
+
+        // Fallback: try CIFilter with imageData
+        if let ciImage = CIImage(data: data),
+           let cgImage = ciContext.createCGImage(ciImage, from: ciImage.extent) {
+            return UIImage(cgImage: cgImage)
+        }
+
+        // Last resort: UIImage(data:) — may look similar to JPG
+        guard let image = UIImage(data: data) else {
+            throw SplitError.extractionFailed("Cannot decode RAW image data for \(resource.originalFilename)")
         }
         return image
     }

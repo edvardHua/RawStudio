@@ -145,8 +145,8 @@ struct CompareView: View {
         guard let pair = currentPair else { return }
         isLoadingImages = true
         do {
-            async let jpgLoad = manager.loadFullImage(for: pair.jpgResource)
-            async let rawLoad = manager.loadFullImage(for: pair.rawResource)
+            async let jpgLoad = manager.loadJPGImage(for: pair.jpgResource)
+            async let rawLoad = manager.loadRAWImage(for: pair.rawResource)
             let (jpg, raw) = try await (jpgLoad, rawLoad)
             jpgImage = jpg
             rawImage = raw
