@@ -14,6 +14,18 @@ enum GalleryFilter: CaseIterable {
     }
 }
 
+enum SourceFilter: CaseIterable {
+    case rawJPGPairs
+    case rawOnly
+
+    var label: String {
+        switch self {
+        case .rawJPGPairs: return String(localized: "RAW+JPG")
+        case .rawOnly: return String(localized: "RAW Only")
+        }
+    }
+}
+
 enum GalleryLayout: String {
     case list
     case grid
@@ -22,6 +34,7 @@ enum GalleryLayout: String {
 struct GalleryView: View {
     @Bindable var manager: PhotoLibraryManager
     @State private var filter: GalleryFilter = .unprocessed
+    @State private var sourceFilter: SourceFilter = .rawJPGPairs
     @State private var layout: GalleryLayout = .list
     @State private var isSelecting = false
     @State private var selectedIDs: Set<String> = []
@@ -40,10 +53,18 @@ struct GalleryView: View {
     ]
 
     private var filteredPairs: [PhotoPair] {
+        // First filter by source type
+        let sourcePairs: [PhotoPair]
+        switch sourceFilter {
+        case .rawJPGPairs: sourcePairs = manager.pairs.filter { !$0.isRawOnly }
+        case .rawOnly: sourcePairs = manager.pairs.filter { $0.isRawOnly }
+        }
+
+        // Then filter by processing status
         switch filter {
-        case .all: return manager.pairs
-        case .unprocessed: return manager.unprocessedPairs
-        case .processed: return manager.processedPairs
+        case .all: return sourcePairs
+        case .unprocessed: return sourcePairs.filter { !$0.isProcessed }
+        case .processed: return sourcePairs.filter { $0.isProcessed }
         }
     }
 
@@ -113,6 +134,15 @@ struct GalleryView: View {
                                 }
                             }
 
+                            // Source filter
+                            Section {
+                                Picker("Source", selection: $sourceFilter) {
+                                    ForEach(SourceFilter.allCases, id: \.self) { s in
+                                        Text(s.label).tag(s)
+                                    }
+                                }
+                            }
+
                             // Layout toggle
                             Section {
                                 Button {
@@ -132,9 +162,12 @@ struct GalleryView: View {
                             }
                         } label: {
                             Label("Menu", systemImage: "ellipsis.circle")
-                        }
-                    }
-                }
+            }
+            .onChange(of: sourceFilter) {
+                selectedIDs.removeAll()
+            }
+        }
+    }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(isSelecting ? "Cancel" : "Select") {
                         isSelecting.toggle()
@@ -147,13 +180,22 @@ struct GalleryView: View {
             }
             .safeAreaInset(edge: .bottom) {
                 if isSelecting && !selectedIDs.isEmpty {
-                    ActionBarView(
-                        onKeepJPG: { confirmBatch(.keepJPG) },
-                        onKeepRAW: { confirmBatch(.keepRAW) },
-                        onSplit: { confirmBatch(.split) },
-                        onExportHDR: { confirmBatchHDR("adaptiveHDR") },
-                        onExportUltraHDR: { confirmBatchHDR("ultraHDR") }
-                    )
+                    if sourceFilter == .rawOnly {
+                        // RAW-only: show two HDR buttons directly
+                        ActionBarView(
+                            onExportHDR: { confirmBatchHDR("adaptiveHDR") },
+                            onExportUltraHDR: { confirmBatchHDR("ultraHDR") }
+                        )
+                    } else {
+                        // RAW+JPG pairs: show keep/split + HDR menu
+                        ActionBarView(
+                            onKeepJPG: { confirmBatch(.keepJPG) },
+                            onKeepRAW: { confirmBatch(.keepRAW) },
+                            onSplit: { confirmBatch(.split) },
+                            onExportHDR: { confirmBatchHDR("adaptiveHDR") },
+                            onExportUltraHDR: { confirmBatchHDR("ultraHDR") }
+                        )
+                    }
                 }
             }
             .alert("Confirm", isPresented: $showBatchConfirm) {
