@@ -9,6 +9,8 @@ struct CompareView: View {
     @State private var currentIndex: Int
     @State private var jpgImage: UIImage?
     @State private var rawImage: UIImage?
+    @State private var jpgMetadata: PhotoMetadata?
+    @State private var rawMetadata: PhotoMetadata?
     @State private var isLoadingImages = true
     @State private var isProcessing = false
     @State private var processingMessage = ""
@@ -36,9 +38,12 @@ struct CompareView: View {
         showingRAW ? rawImage : jpgImage
     }
 
+    private var currentMetadata: PhotoMetadata? {
+        showingRAW ? rawMetadata : jpgMetadata
+    }
+
     var body: some View {
         ZStack {
-            // Background
             Color.black.ignoresSafeArea()
 
             VStack(spacing: 0) {
@@ -53,7 +58,7 @@ struct CompareView: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if let image = currentDisplayImage {
-                    ZStack(alignment: .topLeading) {
+                    ZStack {
                         ZoomableImageView(
                             image: image,
                             zoomState: $zoomState,
@@ -69,15 +74,23 @@ struct CompareView: View {
                             }
                         )
 
-                        // Format label
-                        Text(showingRAW ? "RAW" : "JPG")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 4))
-                            .foregroundStyle(.white)
-                            .padding(8)
+                        // Top-left format badge
+                        VStack {
+                            HStack {
+                                formatBadge
+                                Spacer()
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.top, 8)
+
+                            Spacer()
+
+                            // Bottom metadata bar
+                            if let metadata = currentMetadata {
+                                metadataBar(metadata)
+                            }
+                        }
+                        .allowsHitTesting(false)
                     }
                 }
             }
@@ -140,15 +153,97 @@ struct CompareView: View {
         .navigationBarBackButtonHidden(isProcessing)
     }
 
+    // MARK: - Format Badge
+
+    private var formatBadge: some View {
+        let isRAW = showingRAW
+        let label = isRAW ? "RAW" : "JPG"
+        let badgeColor: Color = isRAW
+            ? Color(red: 0.4, green: 0.8, blue: 0.5)   // soft green
+            : Color(red: 1.0, green: 0.85, blue: 0.35)  // soft yellow
+
+        return Text(label)
+            .font(.system(size: 13, weight: .bold, design: .rounded))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(badgeColor.opacity(0.85), in: RoundedRectangle(cornerRadius: 6))
+            .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
+    }
+
+    // MARK: - Metadata Bar
+
+    private func metadataBar(_ metadata: PhotoMetadata) -> some View {
+        VStack(spacing: 6) {
+            // Camera model + dimensions + file size
+            HStack(spacing: 12) {
+                if let model = metadata.cameraModel {
+                    metadataItem(icon: "camera", text: model)
+                }
+                metadataItem(icon: "aspectratio", text: metadata.dimensions)
+                metadataItem(icon: "doc", text: metadata.fileSizeText)
+            }
+
+            // Shooting params
+            HStack(spacing: 16) {
+                if let aperture = metadata.aperture {
+                    metadataChip(text: String(format: "ƒ/%.1f", aperture))
+                }
+                if let shutter = metadata.shutterSpeed {
+                    metadataChip(text: shutter)
+                }
+                if let iso = metadata.iso {
+                    metadataChip(text: "ISO \(iso)")
+                }
+                if let fl = metadata.focalLength {
+                    metadataChip(text: String(format: "%.0fmm", fl))
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity)
+        .background(
+            LinearGradient(
+                colors: [.clear, .black.opacity(0.6)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
+    }
+
+    private func metadataItem(icon: String, text: String) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 10))
+            Text(text)
+                .font(.system(size: 11, weight: .medium))
+        }
+        .foregroundStyle(.white.opacity(0.85))
+    }
+
+    private func metadataChip(text: String) -> some View {
+        Text(text)
+            .font(.system(size: 12, weight: .semibold, design: .monospaced))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(.white.opacity(0.15), in: RoundedRectangle(cornerRadius: 4))
+    }
+
+    // MARK: - Data Loading
+
     private func loadImages() async {
         guard let pair = currentPair else { return }
         isLoadingImages = true
         do {
-            async let jpgLoad = manager.loadJPGImage(for: pair.jpgResource)
-            async let rawLoad = manager.loadRAWImage(for: pair.rawResource)
-            let (jpg, raw) = try await (jpgLoad, rawLoad)
-            jpgImage = jpg
-            rawImage = raw
+            async let jpgLoad = manager.loadJPGImageWithMetadata(for: pair)
+            async let rawLoad = manager.loadRAWImageWithMetadata(for: pair)
+            let (jpgResult, rawResult) = try await (jpgLoad, rawLoad)
+            jpgImage = jpgResult.0
+            jpgMetadata = jpgResult.1
+            rawImage = rawResult.0
+            rawMetadata = rawResult.1
             showingRAW = false
             zoomState = ZoomState()
         } catch {

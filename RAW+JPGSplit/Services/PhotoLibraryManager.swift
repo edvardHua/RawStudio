@@ -189,42 +189,58 @@ final class PhotoLibraryManager {
 
     private let ciContext = CIContext()
 
-    /// Load JPG image from resource data
-    func loadJPGImage(for resource: PHAssetResource) async throws -> UIImage {
+    /// Load JPG image and metadata from resource data
+    func loadJPGImageWithMetadata(for pair: PhotoPair) async throws -> (UIImage, PhotoMetadata) {
+        let resource = pair.jpgResource
         let data = try await extractResourceData(for: resource)
         guard let image = UIImage(data: data) else {
             throw SplitError.extractionFailed("Cannot decode image data for \(resource.originalFilename)")
         }
-        return image
+        let fileSize = (try? resource.value(forKey: "fileSize") as? Int64) ?? Int64(data.count)
+        let metadata = PhotoMetadata.from(
+            data: data,
+            fileSize: fileSize,
+            pixelWidth: pair.asset.pixelWidth,
+            pixelHeight: pair.asset.pixelHeight
+        )
+        return (image, metadata)
     }
 
-    /// Load RAW image using CIRAWFilter for authentic RAW rendering
-    func loadRAWImage(for resource: PHAssetResource) async throws -> UIImage {
+    /// Load RAW image and metadata using CIRAWFilter
+    func loadRAWImageWithMetadata(for pair: PhotoPair) async throws -> (UIImage, PhotoMetadata) {
+        let resource = pair.rawResource
         let data = try await extractResourceData(for: resource)
+        let fileSize = (try? resource.value(forKey: "fileSize") as? Int64) ?? Int64(data.count)
+
+        // Extract metadata from raw data before rendering
+        let metadata = PhotoMetadata.from(
+            data: data,
+            fileSize: fileSize,
+            pixelWidth: pair.asset.pixelWidth,
+            pixelHeight: pair.asset.pixelHeight
+        )
 
         // Try CIRAWFilter first (iOS 15+) for proper RAW rendering
         if let rawFilter = CIRAWFilter(imageData: data, identifierHint: resource.uniformTypeIdentifier) {
-            // Use default RAW processing — no camera JPG adjustments applied,
-            // so the result shows the RAW sensor data with basic demosaic only
             if let outputImage = rawFilter.outputImage {
                 let extent = outputImage.extent
                 if let cgImage = ciContext.createCGImage(outputImage, from: extent) {
-                    return UIImage(cgImage: cgImage)
+                    return (UIImage(cgImage: cgImage), metadata)
                 }
             }
         }
 
-        // Fallback: try CIFilter with imageData
+        // Fallback: try CIImage
         if let ciImage = CIImage(data: data),
            let cgImage = ciContext.createCGImage(ciImage, from: ciImage.extent) {
-            return UIImage(cgImage: cgImage)
+            return (UIImage(cgImage: cgImage), metadata)
         }
 
-        // Last resort: UIImage(data:) — may look similar to JPG
+        // Last resort
         guard let image = UIImage(data: data) else {
             throw SplitError.extractionFailed("Cannot decode RAW image data for \(resource.originalFilename)")
         }
-        return image
+        return (image, metadata)
     }
 
     // MARK: - Core Operations
