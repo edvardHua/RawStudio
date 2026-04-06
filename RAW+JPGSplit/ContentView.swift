@@ -21,6 +21,7 @@ struct ContentView: View {
             case .authorized:
                 GalleryView(manager: manager)
                     .task {
+                        manager.fetchAlbums()
                         await manager.fetchPairedAssets()
                     }
             case .denied:

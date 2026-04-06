@@ -35,6 +35,8 @@ final class PhotoLibraryManager {
     var permissionStatus: PhotoPermissionStatus = .notDetermined
     var pairs: [PhotoPair] = []
     var isLoading: Bool = false
+    var albums: [Album] = []
+    var selectedAlbum: Album?
 
     // Batch operation state
     var batchProgress: Int = 0
@@ -72,6 +74,34 @@ final class PhotoLibraryManager {
         }
     }
 
+    // MARK: - Albums
+
+    func fetchAlbums() {
+        var result: [Album] = []
+
+        // User-created albums
+        let userAlbums = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: nil)
+        userAlbums.enumerateObjects { collection, _, _ in
+            result.append(Album(collection: collection))
+        }
+
+        // Smart albums (Recents, Favorites, etc.)
+        let smartAlbums = PHAssetCollection.fetchAssetCollections(with: .smartAlbum, subtype: .any, options: nil)
+        smartAlbums.enumerateObjects { collection, _, _ in
+            // Skip empty-titled smart albums and "All Photos" duplicates
+            if collection.localizedTitle != nil {
+                result.append(Album(collection: collection))
+            }
+        }
+
+        albums = result.sorted { ($0.title) < ($1.title) }
+    }
+
+    func selectAlbum(_ album: Album?) async {
+        selectedAlbum = album
+        await fetchPairedAssets()
+    }
+
     // MARK: - Fetch Paired Assets
 
     func fetchPairedAssets() async {
@@ -82,7 +112,12 @@ final class PhotoLibraryManager {
         fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
         fetchOptions.predicate = NSPredicate(format: "mediaType == %d", PHAssetMediaType.image.rawValue)
 
-        let result = PHAsset.fetchAssets(with: fetchOptions)
+        let result: PHFetchResult<PHAsset>
+        if let album = selectedAlbum {
+            result = PHAsset.fetchAssets(in: album.collection, options: fetchOptions)
+        } else {
+            result = PHAsset.fetchAssets(with: fetchOptions)
+        }
         var foundPairs: [PhotoPair] = []
 
         result.enumerateObjects { asset, _, _ in

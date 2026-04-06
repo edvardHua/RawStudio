@@ -14,9 +14,15 @@ enum GalleryFilter: CaseIterable {
     }
 }
 
+enum GalleryLayout: String {
+    case list
+    case grid
+}
+
 struct GalleryView: View {
     @Bindable var manager: PhotoLibraryManager
     @State private var filter: GalleryFilter = .unprocessed
+    @State private var layout: GalleryLayout = .grid
     @State private var isSelecting = false
     @State private var selectedIDs: Set<String> = []
     @State private var showBatchConfirm = false
@@ -24,6 +30,13 @@ struct GalleryView: View {
     @State private var showBatchResult = false
     @State private var batchResultMessage = ""
     @State private var navigateToCompareIndex: Int?
+    @State private var showAlbumPicker = false
+
+    private let gridColumns = [
+        GridItem(.flexible(), spacing: 2),
+        GridItem(.flexible(), spacing: 2),
+        GridItem(.flexible(), spacing: 2)
+    ]
 
     private var filteredPairs: [PhotoPair] {
         switch filter {
@@ -31,6 +44,13 @@ struct GalleryView: View {
         case .unprocessed: return manager.unprocessedPairs
         case .processed: return manager.processedPairs
         }
+    }
+
+    private var navigationTitle: String {
+        if let album = manager.selectedAlbum {
+            return album.title
+        }
+        return String(localized: "All Photos")
     }
 
     var body: some View {
@@ -41,14 +61,18 @@ struct GalleryView: View {
                 } else if manager.pairs.isEmpty {
                     EmptyStateView()
                 } else {
-                    listContent
+                    if layout == .list {
+                        listContent
+                    } else {
+                        gridContent
+                    }
                 }
 
                 if manager.isBatchProcessing {
                     BatchProgressView(current: manager.batchProgress, total: manager.batchTotal)
                 }
             }
-            .navigationTitle("RAW+JPG")
+            .navigationTitle(navigationTitle)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     if isSelecting {
@@ -61,13 +85,51 @@ struct GalleryView: View {
                         }
                     } else {
                         Menu {
-                            Picker("Filter", selection: $filter) {
-                                ForEach(GalleryFilter.allCases, id: \.self) { f in
-                                    Text(f.label).tag(f)
+                            // Album picker
+                            Section {
+                                Button {
+                                    showAlbumPicker = true
+                                } label: {
+                                    Label("Albums", systemImage: "folder")
+                                }
+
+                                if manager.selectedAlbum != nil {
+                                    Button {
+                                        Task { await manager.selectAlbum(nil) }
+                                    } label: {
+                                        Label("All Photos", systemImage: "photo.on.rectangle")
+                                    }
+                                }
+                            }
+
+                            // Filter
+                            Section {
+                                Picker("Filter", selection: $filter) {
+                                    ForEach(GalleryFilter.allCases, id: \.self) { f in
+                                        Text(f.label).tag(f)
+                                    }
+                                }
+                            }
+
+                            // Layout toggle
+                            Section {
+                                Button {
+                                    withAnimation(.easeInOut(duration: 0.25)) {
+                                        layout = layout == .list ? .grid : .list
+                                    }
+                                } label: {
+                                    Label(
+                                        layout == .list
+                                            ? String(localized: "Grid View")
+                                            : String(localized: "List View"),
+                                        systemImage: layout == .list
+                                            ? "square.grid.3x3"
+                                            : "list.bullet"
+                                    )
                                 }
                             }
                         } label: {
-                            Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
+                            Label("Menu", systemImage: "ellipsis.circle")
                         }
                     }
                 }
@@ -113,8 +175,20 @@ struct GalleryView: View {
                     startIndex: index
                 )
             }
+            .sheet(isPresented: $showAlbumPicker) {
+                AlbumPickerView(
+                    albums: manager.albums,
+                    selectedAlbumID: manager.selectedAlbum?.id,
+                    onSelect: { album in
+                        Task { await manager.selectAlbum(album) }
+                    },
+                    isPresented: $showAlbumPicker
+                )
+            }
         }
     }
+
+    // MARK: - List Layout
 
     private var listContent: some View {
         let grouped = manager.groupedByDate(filteredPairs)
@@ -126,35 +200,54 @@ struct GalleryView: View {
                             pair: pair,
                             isSelecting: isSelecting,
                             isSelected: selectedIDs.contains(pair.id),
-                            onToggleSelect: {
-                                if selectedIDs.contains(pair.id) {
-                                    selectedIDs.remove(pair.id)
-                                } else {
-                                    selectedIDs.insert(pair.id)
-                                }
-                            }
+                            onToggleSelect: { toggleSelect(pair.id) }
                         )
                         .contentShape(Rectangle())
-                        .onTapGesture {
-                            if isSelecting {
-                                if selectedIDs.contains(pair.id) {
-                                    selectedIDs.remove(pair.id)
-                                } else {
-                                    selectedIDs.insert(pair.id)
-                                }
-                            } else if !pair.isProcessed {
-                                let unprocessed = filteredPairs.filter { !$0.isProcessed }
-                                if let idx = unprocessed.firstIndex(where: { $0.id == pair.id }) {
-                                    navigateToCompareIndex = idx
-                                }
-                            }
-                        }
+                        .onTapGesture { handleTap(pair) }
                         .listRowInsets(EdgeInsets())
                     }
                 }
             }
         }
         .listStyle(.plain)
+    }
+
+    // MARK: - Grid Layout
+
+    private var gridContent: some View {
+        ScrollView {
+            LazyVGrid(columns: gridColumns, spacing: 2) {
+                ForEach(filteredPairs) { pair in
+                    PhotoGridItemView(
+                        pair: pair,
+                        isSelecting: isSelecting,
+                        isSelected: selectedIDs.contains(pair.id)
+                    )
+                    .onTapGesture { handleTap(pair) }
+                }
+            }
+        }
+    }
+
+    // MARK: - Shared Actions
+
+    private func toggleSelect(_ id: String) {
+        if selectedIDs.contains(id) {
+            selectedIDs.remove(id)
+        } else {
+            selectedIDs.insert(id)
+        }
+    }
+
+    private func handleTap(_ pair: PhotoPair) {
+        if isSelecting {
+            toggleSelect(pair.id)
+        } else if !pair.isProcessed {
+            let unprocessed = filteredPairs.filter { !$0.isProcessed }
+            if let idx = unprocessed.firstIndex(where: { $0.id == pair.id }) {
+                navigateToCompareIndex = idx
+            }
+        }
     }
 
     private var batchConfirmMessage: String {
@@ -181,6 +274,57 @@ struct GalleryView: View {
             let result = await manager.performBatchAction(action, on: selected)
             batchResultMessage = String(localized: "Successfully processed \(result.success), failed \(result.failed).")
             showBatchResult = true
+        }
+    }
+}
+
+// MARK: - Album Picker
+
+struct AlbumPickerView: View {
+    let albums: [Album]
+    let selectedAlbumID: String?
+    let onSelect: (Album) -> Void
+    @Binding var isPresented: Bool
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(albums, id: \.id) { album in
+                        albumRow(album)
+                        Divider().padding(.leading)
+                    }
+                }
+            }
+            .navigationTitle("Albums")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        isPresented = false
+                    }
+                }
+            }
+        }
+    }
+
+    private func albumRow(_ album: Album) -> some View {
+        Button {
+            onSelect(album)
+            isPresented = false
+        } label: {
+            HStack {
+                Image(systemName: "folder")
+                Text(album.title)
+                    .foregroundStyle(.primary)
+                Spacer()
+                if selectedAlbumID == album.id {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(Color.accentColor)
+                }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 12)
         }
     }
 }
