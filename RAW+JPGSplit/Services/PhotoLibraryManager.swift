@@ -77,24 +77,43 @@ final class PhotoLibraryManager {
     // MARK: - Albums
 
     func fetchAlbums() {
-        var result: [Album] = []
+        var smartAlbumList: [Album] = []
+        var userAlbumList: [Album] = []
 
-        // User-created albums
-        let userAlbums = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: nil)
-        userAlbums.enumerateObjects { collection, _, _ in
-            result.append(Album(collection: collection))
-        }
+        // Smart albums in system-like order
+        let preferredSmartAlbumOrder: [PHAssetCollectionSubtype] = [
+            .smartAlbumUserLibrary,    // Recents / All Photos
+            .smartAlbumFavorites,      // Favorites
+            .smartAlbumRecentlyAdded,  // Recently Added
+            .smartAlbumSelfPortraits,  // Selfies
+            .smartAlbumDepthEffect,    // Portrait
+            .smartAlbumLivePhotos,     // Live Photos
+            .smartAlbumPanoramas,      // Panoramas
+            .smartAlbumVideos,         // Videos
+            .smartAlbumScreenshots,    // Screenshots
+            .smartAlbumBursts,         // Bursts
+            .smartAlbumSlomoVideos,    // Slo-mo
+            .smartAlbumTimelapses,     // Time-lapse
+            .smartAlbumAnimated,       // Animated
+            .smartAlbumLongExposures,  // Long Exposure
+        ]
 
-        // Smart albums (Recents, Favorites, etc.)
-        let smartAlbums = PHAssetCollection.fetchAssetCollections(with: .smartAlbum, subtype: .any, options: nil)
-        smartAlbums.enumerateObjects { collection, _, _ in
-            // Skip empty-titled smart albums and "All Photos" duplicates
-            if collection.localizedTitle != nil {
-                result.append(Album(collection: collection))
+        for subtype in preferredSmartAlbumOrder {
+            let fetched = PHAssetCollection.fetchAssetCollections(with: .smartAlbum, subtype: subtype, options: nil)
+            fetched.enumerateObjects { collection, _, _ in
+                if collection.localizedTitle != nil {
+                    smartAlbumList.append(Album(collection: collection))
+                }
             }
         }
 
-        albums = result.sorted { ($0.title) < ($1.title) }
+        // User-created albums (keep original order)
+        let userAlbums = PHAssetCollection.fetchAssetCollections(with: .album, subtype: .any, options: nil)
+        userAlbums.enumerateObjects { collection, _, _ in
+            userAlbumList.append(Album(collection: collection))
+        }
+
+        albums = smartAlbumList + userAlbumList
     }
 
     func selectAlbum(_ album: Album?) async {
