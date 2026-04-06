@@ -16,6 +16,7 @@ struct JPGEditorView: View {
 
     private let ciContext = CIContext(options: [.useSoftwareRenderer: false])
     private let sourceImage: CIImage?
+    private let imageOrientation: UIImage.Orientation
 
     enum EditorTab: String, CaseIterable {
         case exposure, color, detail
@@ -44,7 +45,31 @@ struct JPGEditorView: View {
         self.presetStore = presetStore
         self.onDone = onDone
         self._params = State(initialValue: initialParams)
-        self.sourceImage = CIImage(data: imageData)
+
+        // Create CIImage with orientation applied so pixels match display
+        if let ciImage = CIImage(data: imageData) {
+            self.sourceImage = ciImage.oriented(forExifOrientation: Int32(ciImage.properties[kCGImagePropertyOrientation as String] as? Int ?? 1))
+            // Map CGImagePropertyOrientation to UIImage.Orientation for output
+            let exifOrientation = ciImage.properties[kCGImagePropertyOrientation as String] as? Int ?? 1
+            self.imageOrientation = Self.uiImageOrientation(from: exifOrientation)
+        } else {
+            self.sourceImage = nil
+            self.imageOrientation = .up
+        }
+    }
+
+    private static func uiImageOrientation(from exifOrientation: Int) -> UIImage.Orientation {
+        switch exifOrientation {
+        case 1: return .up
+        case 2: return .upMirrored
+        case 3: return .down
+        case 4: return .downMirrored
+        case 5: return .leftMirrored
+        case 6: return .right
+        case 7: return .rightMirrored
+        case 8: return .left
+        default: return .up
+        }
     }
 
     var body: some View {

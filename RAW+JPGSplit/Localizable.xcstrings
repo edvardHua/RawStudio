@@ -308,6 +308,17 @@
         }
       }
     },
+    "Highlights" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "高光"
+          }
+        }
+      }
+    },
     "JPG" : {
       "localizations" : {
         "zh-Hans" : {
@@ -624,6 +635,17 @@
         }
       }
     },
+    "Saturation" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "饱和度"
+          }
+        }
+      }
+    },
     "Save" : {
       "localizations" : {
         "zh-Hans" : {
@@ -849,24 +871,14 @@
         }
       }
     },
-    "Highlights" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "高光" }
-        }
-      }
-    },
-    "Saturation" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "饱和度" }
-        }
-      }
-    },
     "Vibrance" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "自然饱和度" }
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自然饱和度"
+          }
         }
       }
     }
