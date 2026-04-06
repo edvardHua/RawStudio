@@ -79,7 +79,7 @@ struct GalleryView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                if manager.isLoading {
+                if manager.isLoading && manager.pairs.isEmpty {
                     VStack(spacing: 16) {
                         ProgressView()
                             .scaleEffect(1.5)
@@ -91,7 +91,7 @@ struct GalleryView: View {
                             .foregroundStyle(.tertiary)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if filteredPairs.isEmpty {
+                } else if !manager.isLoading && filteredPairs.isEmpty {
                     EmptyStateView()
                 } else {
                     if layout == .list {
@@ -278,6 +278,8 @@ struct GalleryView: View {
                             .background(.bar)
                     }
                 }
+
+                scanningMoreIndicator
             }
         }
     }
@@ -297,6 +299,23 @@ struct GalleryView: View {
                     .onTapGesture { handleTap(pair) }
                 }
             }
+
+            scanningMoreIndicator
+        }
+    }
+
+    @ViewBuilder
+    private var scanningMoreIndicator: some View {
+        if manager.isScanningMore {
+            HStack(spacing: 8) {
+                ProgressView()
+                    .scaleEffect(0.8)
+                Text("Scanning more photos... \(manager.scanProgress)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
         }
     }
 

@@ -35,6 +35,8 @@ final class PhotoLibraryManager {
     var permissionStatus: PhotoPermissionStatus = .notDetermined
     var pairs: [PhotoPair] = []
     var isLoading: Bool = false
+    var isScanningMore: Bool = false
+    var scanProgress: String = ""
     var albums: [Album] = []
     var selectedAlbum: Album?
 
@@ -126,56 +128,99 @@ final class PhotoLibraryManager {
 
     // MARK: - Fetch Paired Assets
 
+    private static let batchSize = 50
+
     func fetchPairedAssets() async {
         isLoading = true
+        pairs = []
 
         let album = selectedAlbum
-        let foundPairs = await Task.detached {
-            Self.scanForPairs(in: album)
-        }.value
+        let stream = Self.scanForPairsBatched(in: album)
 
-        self.pairs = foundPairs
+        var isFirstBatch = true
+        for await batch in stream {
+            pairs.append(contentsOf: batch.pairs)
+            scanProgress = batch.progress
+
+            if isFirstBatch && !pairs.isEmpty {
+                isLoading = false
+                isScanningMore = true
+                isFirstBatch = false
+            }
+        }
+
         isLoading = false
+        isScanningMore = false
+        scanProgress = ""
     }
 
-    /// Heavy scanning work — runs off main thread
-    nonisolated private static func scanForPairs(in album: Album?) -> [PhotoPair] {
-        let fetchOptions = PHFetchOptions()
-        fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
-        fetchOptions.predicate = NSPredicate(format: "mediaType == %d", PHAssetMediaType.image.rawValue)
+    /// Batch result from scanning
+    struct ScanBatch: Sendable {
+        let pairs: [PhotoPair]
+        let progress: String // e.g. "50/120"
+    }
 
-        let result: PHFetchResult<PHAsset>
-        if let album = album {
-            result = PHAsset.fetchAssets(in: album.collection, options: fetchOptions)
-        } else {
-            result = PHAsset.fetchAssets(with: fetchOptions)
-        }
-        var foundPairs: [PhotoPair] = []
+    /// Scan with batch streaming — yields results progressively
+    nonisolated private static func scanForPairsBatched(in album: Album?) -> AsyncStream<ScanBatch> {
+        AsyncStream { continuation in
+            let fetchOptions = PHFetchOptions()
+            fetchOptions.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
+            fetchOptions.predicate = NSPredicate(
+                format: "mediaType == %d",
+                PHAssetMediaType.image.rawValue
+            )
 
-        result.enumerateObjects { asset, _, _ in
-            let resources = PHAssetResource.assetResources(for: asset)
-            var jpgResource: PHAssetResource?
-            var rawResource: PHAssetResource?
+            let result: PHFetchResult<PHAsset>
+            if let album = album {
+                result = PHAsset.fetchAssets(in: album.collection, options: fetchOptions)
+            } else {
+                result = PHAsset.fetchAssets(with: fetchOptions)
+            }
 
-            for resource in resources {
-                if resource.type == .alternatePhoto {
-                    rawResource = resource
-                } else if resource.type == .photo {
-                    if Self.isRAWType(resource.uniformTypeIdentifier) {
+            let totalCount = result.count
+            var batchBuffer: [PhotoPair] = []
+            var scannedCount = 0
+
+            result.enumerateObjects { asset, _, _ in
+                let resources = PHAssetResource.assetResources(for: asset)
+                var jpgResource: PHAssetResource?
+                var rawResource: PHAssetResource?
+
+                for resource in resources {
+                    if resource.type == .alternatePhoto {
                         rawResource = resource
-                    } else {
-                        jpgResource = resource
+                    } else if resource.type == .photo {
+                        if Self.isRAWType(resource.uniformTypeIdentifier) {
+                            rawResource = resource
+                        } else {
+                            jpgResource = resource
+                        }
                     }
+                }
+
+                if let raw = rawResource {
+                    let pair = PhotoPair(asset: asset, jpgResource: jpgResource, rawResource: raw)
+                    batchBuffer.append(pair)
+                }
+
+                scannedCount += 1
+
+                // Yield batch when buffer is full
+                if batchBuffer.count >= batchSize {
+                    let progress = "\(scannedCount)/\(totalCount)"
+                    continuation.yield(ScanBatch(pairs: batchBuffer, progress: progress))
+                    batchBuffer.removeAll(keepingCapacity: true)
                 }
             }
 
-            if let raw = rawResource {
-                let pair = PhotoPair(asset: asset, jpgResource: jpgResource, rawResource: raw)
-                foundPairs.append(pair)
+            // Yield remaining
+            if !batchBuffer.isEmpty {
+                let progress = "\(scannedCount)/\(totalCount)"
+                continuation.yield(ScanBatch(pairs: batchBuffer, progress: progress))
             }
-        }
 
-        return foundPairs
+            continuation.finish()
+        }
     }
 
     // MARK: - Thumbnails
