@@ -12,6 +12,7 @@ struct CompareView: View {
     @State private var isLoadingImages = true
     @State private var isProcessing = false
     @State private var processingMessage = ""
+    @State private var showingRAW = false
     @State private var zoomState = ZoomState()
     @State private var showToast = false
     @State private var toastMessage = ""
@@ -31,31 +32,65 @@ struct CompareView: View {
         return pairs[currentIndex]
     }
 
-    private var isLandscape: Bool {
-        guard let pair = currentPair else { return false }
-        let w = CGFloat(pair.asset.pixelWidth)
-        let h = CGFloat(pair.asset.pixelHeight)
-        return w > h
+    private var currentDisplayImage: UIImage? {
+        showingRAW ? rawImage : jpgImage
     }
 
     var body: some View {
         ZStack {
+            // Background
+            Color.black.ignoresSafeArea()
+
             VStack(spacing: 0) {
                 if isLoadingImages {
                     VStack(spacing: 16) {
                         ProgressView()
                             .scaleEffect(1.2)
+                            .tint(.white)
                         Text("Downloading from iCloud...")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let jpg = jpgImage, let raw = rawImage {
-                    compareContent(jpg: jpg, raw: raw)
+                } else if let image = currentDisplayImage {
+                    ZStack(alignment: .topLeading) {
+                        ZoomableImageView(image: image, zoomState: $zoomState)
+
+                        // Format label
+                        Text(showingRAW ? "RAW" : "JPG")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 4))
+                            .foregroundStyle(.white)
+                            .padding(8)
+                    }
                 }
             }
             .navigationTitle("\(currentIndex + 1) / \(pairs.count)")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    if !isLoadingImages && !isProcessing {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                showingRAW.toggle()
+                                zoomState = ZoomState()
+                            }
+                        } label: {
+                            Text(showingRAW ? "JPG" : "RAW")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(.ultraThinMaterial, in: Capsule())
+                        }
+                    }
+                }
+            }
             .safeAreaInset(edge: .bottom) {
                 if currentPair != nil && !isLoadingImages && !isProcessing {
                     ActionBarView(
@@ -87,7 +122,7 @@ struct CompareView: View {
                 await loadImages()
             }
 
-            // Processing overlay — covers content but NOT navigation bar
+            // Processing overlay
             if isProcessing {
                 Color.black.opacity(0.3)
                     .allowsHitTesting(true)
@@ -106,38 +141,6 @@ struct CompareView: View {
         .navigationBarBackButtonHidden(isProcessing)
     }
 
-    @ViewBuilder
-    private func compareContent(jpg: UIImage, raw: UIImage) -> some View {
-        if isLandscape {
-            // Landscape: vertical stack (top/bottom)
-            VStack(spacing: 1) {
-                imagePanel(image: raw, label: "RAW")
-                imagePanel(image: jpg, label: "JPG")
-            }
-        } else {
-            // Portrait: horizontal stack (left/right)
-            HStack(spacing: 1) {
-                imagePanel(image: raw, label: "RAW")
-                imagePanel(image: jpg, label: "JPG")
-            }
-        }
-    }
-
-    private func imagePanel(image: UIImage, label: String) -> some View {
-        ZStack(alignment: .topLeading) {
-            ZoomableImageView(image: image, zoomState: $zoomState)
-
-            Text(label)
-                .font(.caption)
-                .fontWeight(.semibold)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 4))
-                .foregroundStyle(.white)
-                .padding(8)
-        }
-    }
-
     private func loadImages() async {
         guard let pair = currentPair else { return }
         isLoadingImages = true
@@ -147,6 +150,7 @@ struct CompareView: View {
             let (jpg, raw) = try await (jpgLoad, rawLoad)
             jpgImage = jpg
             rawImage = raw
+            showingRAW = false
             zoomState = ZoomState()
         } catch {
             errorMessage = error.localizedDescription
@@ -178,7 +182,6 @@ struct CompareView: View {
                 toastMessage = "\(actionLabel) · Original can be recovered from Recently Deleted"
                 withAnimation { showToast = true }
 
-                // Move to next unprocessed or dismiss
                 try? await Task.sleep(for: .seconds(1.5))
                 moveToNextOrDismiss()
             } catch {
@@ -195,7 +198,6 @@ struct CompareView: View {
             dismiss()
             return
         }
-        // Try to stay at same index or go to next valid one
         let nextIndex = min(currentIndex, remaining.count - 1)
         navigateTo(nextIndex)
     }
