@@ -7,6 +7,7 @@ struct RAWEditorView: View {
     let rawData: Data
     let resourceHint: String
     let assetID: String
+    let previewImageForMask: UIImage?  // Pre-rendered image for Vision segmentation
     var presetStore: RAWEditPresetStore
     let onDone: (RAWEditParams, LayerEdits) -> Void
 
@@ -48,12 +49,14 @@ struct RAWEditorView: View {
     }
 
     init(rawData: Data, resourceHint: String, assetID: String,
+         previewImageForMask: UIImage? = nil,
          presetStore: RAWEditPresetStore, initialParams: RAWEditParams,
          initialLayerEdits: LayerEdits = LayerEdits(),
          onDone: @escaping (RAWEditParams, LayerEdits) -> Void) {
         self.rawData = rawData
         self.resourceHint = resourceHint
         self.assetID = assetID
+        self.previewImageForMask = previewImageForMask
         self.presetStore = presetStore
         self.onDone = onDone
         self._params = State(initialValue: initialParams)
@@ -346,13 +349,23 @@ struct RAWEditorView: View {
     // MARK: - Rendering
 
     private func generateMasks() async {
+        isMaskLoading = true
+        defer { isMaskLoading = false }
+
+        // Use pre-rendered UIImage from CompareView (standard sRGB CGImage)
+        // This avoids CIRAWFilter output issues (non-zero extent, HDR color space)
+        if let cgImage = previewImageForMask?.cgImage {
+            let ciImage = CIImage(cgImage: cgImage)
+            await segmentation.generateMasks(for: ciImage, identifier: assetID)
+            return
+        }
+
+        // Fallback: render via CIRAWFilter (may not work for all formats)
         guard let rawFilter = CIRAWFilter(imageData: rawData, identifierHint: resourceHint) else { return }
         rawFilter.isDraftModeEnabled = true
-        rawFilter.scaleFactor = 0.25
+        rawFilter.scaleFactor = 0.5
         guard let image = rawFilter.outputImage else { return }
-        isMaskLoading = true
         await segmentation.generateMasks(for: image, identifier: assetID)
-        isMaskLoading = false
     }
 
     private func renderPreview() async {

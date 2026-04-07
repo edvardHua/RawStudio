@@ -2,6 +2,7 @@
   "sourceLanguage" : "en",
   "strings" : {
     "%@ · Original can be recovered from Recently Deleted" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -33,7 +34,6 @@
       }
     },
     "Adaptive HDR (HEIF)" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -90,6 +90,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "发生了未知错误。"
+          }
+        }
+      }
+    },
+    "Background" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "背景"
           }
         }
       }
@@ -267,6 +277,16 @@
         }
       }
     },
+    "Foreground" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "前景"
+          }
+        }
+      }
+    },
     "Gamut Mapping" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -274,6 +294,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "色域映射"
+          }
+        }
+      }
+    },
+    "Global" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "全局"
           }
         }
       }
@@ -536,6 +566,16 @@
         }
       }
     },
+    "Person" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "人物"
+          }
+        }
+      }
+    },
     "Photo Access Required" : {
       "localizations" : {
         "zh-Hans" : {
@@ -622,6 +662,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "RAW+JPG Split 需要完全访问你的照片图库，以查找和处理配对照片。"
+          }
+        }
+      }
+    },
+    "Reprocess" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重新处理"
           }
         }
       }
@@ -713,6 +763,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "正在扫描照片库…"
+          }
+        }
+      }
+    },
+    "Scanning more photos... %@" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在扫描更多照片… %@"
           }
         }
       }
@@ -830,6 +890,16 @@
         }
       }
     },
+    "This may take a moment for large libraries" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "大型图库可能需要一些时间"
+          }
+        }
+      }
+    },
     "Tint" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -853,7 +923,6 @@
       }
     },
     "Ultra HDR (JPEG)" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -883,6 +952,16 @@
         }
       }
     },
+    "Undo" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "撤销"
+          }
+        }
+      }
+    },
     "Unprocessed" : {
       "localizations" : {
         "zh-Hans" : {
@@ -901,62 +980,6 @@
             "state" : "translated",
             "value" : "自然饱和度"
           }
-        }
-      }
-    },
-    "This may take a moment for large libraries" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "大型图库可能需要一些时间" }
-        }
-      }
-    },
-    "Scanning more photos... %@" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "正在扫描更多照片… %@" }
-        }
-      }
-    },
-    "Global" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "全局" }
-        }
-      }
-    },
-    "Person" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "人物" }
-        }
-      }
-    },
-    "Foreground" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "前景" }
-        }
-      }
-    },
-    "Background" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "背景" }
-        }
-      }
-    },
-    "Reprocess" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "重新处理" }
-        }
-      }
-    },
-    "Undo" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "撤销" }
         }
       }
     }

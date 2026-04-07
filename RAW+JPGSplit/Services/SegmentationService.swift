@@ -1,42 +1,72 @@
 import Vision
 import CoreImage
+import CoreImage.CIFilterBuiltins
 import UIKit
 
 /// Generates and caches segmentation masks using Vision framework.
 final class SegmentationService {
     private let ciContext = CIContext(options: [.useSoftwareRenderer: false])
 
-    // Cached masks per image (keyed by a hash or identifier)
+    // Cached masks
     private var cachedPersonMask: CIImage?
     private var cachedForegroundMask: CIImage?
     private var cachedBackgroundMask: CIImage?
-    private var cachedImageSize: CGSize = .zero
     private var cacheID: String = ""
 
-    /// Generate all needed masks for the given image. Caches results.
+    /// Maximum long-edge dimension for Vision input. Smaller = faster.
+    private static let maxVisionDimension: CGFloat = 1024
+
+    /// Generate all needed masks from a CIImage. Normalizes extent, scales down,
+    /// converts to CGImage, then runs Vision on a background thread.
     func generateMasks(for image: CIImage, identifier: String) async {
         guard cacheID != identifier else { return } // already cached
-
-        let extent = image.extent
-        cachedImageSize = extent.size
         cacheID = identifier
 
-        // Generate person mask
-        cachedPersonMask = await generatePersonMask(for: image)
+        // 1. Normalize extent origin to (0,0)
+        let normalized: CIImage
+        if image.extent.origin != .zero {
+            normalized = image.transformed(by: CGAffineTransform(
+                translationX: -image.extent.origin.x,
+                y: -image.extent.origin.y
+            ))
+        } else {
+            normalized = image
+        }
 
-        // Generate foreground mask
-        cachedForegroundMask = await generateForegroundMask(for: image)
+        // 2. Scale down for performance
+        let longEdge = max(normalized.extent.width, normalized.extent.height)
+        let scaled: CIImage
+        if longEdge > Self.maxVisionDimension {
+            let s = Self.maxVisionDimension / longEdge
+            scaled = normalized.transformed(by: CGAffineTransform(scaleX: s, y: s))
+        } else {
+            scaled = normalized
+        }
 
-        // Background = inverse of foreground
+        // 3. Convert to CGImage (guaranteed to succeed with normalized extent)
+        guard let cgImage = ciContext.createCGImage(scaled, from: scaled.extent) else {
+            cachedPersonMask = nil
+            cachedForegroundMask = nil
+            cachedBackgroundMask = nil
+            return
+        }
+
+        // 4. Run Vision on background thread
+        let results = await Task.detached(priority: .userInitiated) {
+            Self.runVisionRequests(on: cgImage)
+        }.value
+
+        cachedPersonMask = results.personMask
+        cachedForegroundMask = results.foregroundMask
+
         if let fg = cachedForegroundMask {
-            let inverted = fg.applyingFilter("CIColorInvert")
-            cachedBackgroundMask = inverted
+            cachedBackgroundMask = fg.applyingFilter("CIColorInvert")
         } else {
             cachedBackgroundMask = nil
         }
     }
 
-    /// Get the mask for a specific layer type, scaled to target image size.
+    /// Get the mask for a specific layer type, scaled and aligned to target image extent.
     func mask(for layer: LayerType, imageExtent: CGRect) -> CIImage? {
         let raw: CIImage?
         switch layer {
@@ -51,7 +81,17 @@ final class SegmentationService {
         // Scale mask to match image dimensions
         let scaleX = imageExtent.width / mask.extent.width
         let scaleY = imageExtent.height / mask.extent.height
-        return mask.transformed(by: CGAffineTransform(scaleX: scaleX, y: scaleY))
+        var scaled = mask.transformed(by: CGAffineTransform(scaleX: scaleX, y: scaleY))
+
+        // Align mask origin to match the image extent origin
+        // CIRAWFilter output may have non-zero origin
+        let offsetX = imageExtent.origin.x - scaled.extent.origin.x
+        let offsetY = imageExtent.origin.y - scaled.extent.origin.y
+        if offsetX != 0 || offsetY != 0 {
+            scaled = scaled.transformed(by: CGAffineTransform(translationX: offsetX, y: offsetY))
+        }
+
+        return scaled
     }
 
     /// Check if a specific layer has detectable content
@@ -69,15 +109,23 @@ final class SegmentationService {
         cachedPersonMask = nil
         cachedForegroundMask = nil
         cachedBackgroundMask = nil
-        cachedImageSize = .zero
         cacheID = ""
     }
 
-    // MARK: - Private
+    // MARK: - Private: Vision (runs off main thread)
 
-    private func generatePersonMask(for image: CIImage) async -> CIImage? {
-        guard let cgImage = ciContext.createCGImage(image, from: image.extent) else { return nil }
+    private struct VisionResults: Sendable {
+        let personMask: CIImage?
+        let foregroundMask: CIImage?
+    }
 
+    nonisolated private static func runVisionRequests(on cgImage: CGImage) -> VisionResults {
+        let personMask = generatePersonMask(from: cgImage)
+        let foregroundMask = generateForegroundMask(from: cgImage)
+        return VisionResults(personMask: personMask, foregroundMask: foregroundMask)
+    }
+
+    nonisolated private static func generatePersonMask(from cgImage: CGImage) -> CIImage? {
         let request = VNGeneratePersonSegmentationRequest()
         request.qualityLevel = .balanced
 
@@ -85,27 +133,29 @@ final class SegmentationService {
         do {
             try handler.perform([request])
             guard let result = request.results?.first else { return nil }
-            let maskBuffer = result.pixelBuffer
-            return CIImage(cvPixelBuffer: maskBuffer)
+            return CIImage(cvPixelBuffer: result.pixelBuffer)
         } catch {
             return nil
         }
     }
 
-    private func generateForegroundMask(for image: CIImage) async -> CIImage? {
-        guard let cgImage = ciContext.createCGImage(image, from: image.extent) else { return nil }
-
+    nonisolated private static func generateForegroundMask(from cgImage: CGImage) -> CIImage? {
         let request = VNGenerateForegroundInstanceMaskRequest()
         let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
         do {
             try handler.perform([request])
             guard let observation = request.results?.first else { return nil }
-            let maskBuffer = try observation.generateScaledMaskForImage(forInstances: observation.allInstances, from: handler)
+            let maskBuffer = try observation.generateScaledMaskForImage(
+                forInstances: observation.allInstances,
+                from: handler
+            )
             return CIImage(cvPixelBuffer: maskBuffer)
         } catch {
             return nil
         }
     }
+
+    // MARK: - Static: Apply Layer Edits
 
     /// Apply layer edits to an image using a mask
     static func applyLayerEdits(
@@ -115,7 +165,6 @@ final class SegmentationService {
     ) -> CIImage {
         guard params.isModified else { return image }
 
-        // Apply CIFilter chain to get edited version
         var edited = image
 
         if params.exposure != 0 {
@@ -141,7 +190,6 @@ final class SegmentationService {
             if let output = filter.outputImage { edited = output }
         }
 
-        // Blend: edited where mask is white, original where mask is black
         let blend = CIFilter.blendWithMask()
         blend.inputImage = edited
         blend.backgroundImage = image

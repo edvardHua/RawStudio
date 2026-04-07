@@ -204,6 +204,7 @@ struct CompareView: View {
                     rawData: rawData,
                     resourceHint: pair.rawResource.uniformTypeIdentifier,
                     assetID: pair.id,
+                    previewImageForMask: rawImage,
                     presetStore: presetStore,
                     initialParams: currentEditParams,
                     initialLayerEdits: currentLayerEdits,
