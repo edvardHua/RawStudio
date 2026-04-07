@@ -64,6 +64,7 @@
       }
     },
     "All" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -163,6 +164,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "对比度"
+          }
+        }
+      }
+    },
+    "Deleting..." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "正在删除…"
           }
         }
       }
@@ -268,6 +279,7 @@
       }
     },
     "Filter" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -556,7 +568,18 @@
         }
       }
     },
+    "Original deleted" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "原图已删除"
+          }
+        }
+      }
+    },
     "Original RAW+JPG paired photos will be deleted. They can be recovered from Recently Deleted." : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -607,6 +630,7 @@
       }
     },
     "Processed" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -667,6 +691,7 @@
       }
     },
     "Reprocess" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -819,6 +844,16 @@
         }
       }
     },
+    "Skin" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "皮肤"
+          }
+        }
+      }
+    },
     "Source" : {
       "localizations" : {
         "zh-Hans" : {
@@ -830,6 +865,7 @@
       }
     },
     "Split" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -963,6 +999,7 @@
       }
     },
     "Unprocessed" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -980,27 +1017,6 @@
             "state" : "translated",
             "value" : "自然饱和度"
           }
-        }
-      }
-    },
-    "Skin" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "皮肤" }
-        }
-      }
-    },
-    "Deleting..." : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "正在删除…" }
-        }
-      }
-    },
-    "Original deleted" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "原图已删除" }
         }
       }
     }

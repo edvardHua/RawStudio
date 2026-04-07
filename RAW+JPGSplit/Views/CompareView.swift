@@ -396,14 +396,17 @@ struct CompareView: View {
             isProcessing = true
             processingMessage = String(localized: "Deleting...")
 
-            await manager.deleteOriginal(for: pair)
+            let success = await manager.deleteOriginal(for: pair)
             isProcessing = false
 
-            toastMessage = String(localized: "Original deleted")
-            withAnimation { showToast = true }
+            if success {
+                toastMessage = String(localized: "Original deleted")
+                withAnimation { showToast = true }
 
-            try? await Task.sleep(for: .seconds(1.5))
-            moveToNextOrDismiss()
+                try? await Task.sleep(for: .seconds(1.5))
+                moveToNextOrDismiss()
+            }
+            // If user denied, just dismiss the overlay — no toast, no navigation
         }
     }
 

@@ -445,8 +445,9 @@ final class PhotoLibraryManager {
     }
 
     /// Delete the original paired asset (moves to Recently Deleted)
-    func deleteOriginal(for pair: PhotoPair) async {
-        await deleteAssetSilently(pair.asset)
+    /// Returns true if user allowed the deletion, false if denied.
+    func deleteOriginal(for pair: PhotoPair) async -> Bool {
+        await deleteAssetWithResult(pair.asset)
     }
 
     func performBatchAction(_ action: SplitAction, on selectedPairs: [PhotoPair]) async -> (success: Int, failed: Int) {
@@ -559,6 +560,17 @@ final class PhotoLibraryManager {
                 PHAssetChangeRequest.deleteAssets([asset] as NSArray)
             }) { _, _ in
                 continuation.resume()
+            }
+        }
+    }
+
+    /// Delete asset and return whether the user allowed it.
+    private func deleteAssetWithResult(_ asset: PHAsset) async -> Bool {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+            PHPhotoLibrary.shared().performChanges({
+                PHAssetChangeRequest.deleteAssets([asset] as NSArray)
+            }) { success, _ in
+                continuation.resume(returning: success)
             }
         }
     }
