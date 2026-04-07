@@ -386,7 +386,7 @@ struct RAWEditorView: View {
 
         // Apply layer edits with masks
         if layerEdits.hasAnyLayerEdits {
-            for layer in [LayerType.person, .foreground, .background] {
+            for layer in [LayerType.person, .skin, .foreground, .background] {
                 let lp = layerEdits.params(for: layer)
                 if lp.isModified, let mask = segmentation.mask(for: layer, imageExtent: outputImage.extent) {
                     outputImage = SegmentationService.applyLayerEdits(lp, to: outputImage, mask: mask)

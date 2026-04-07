@@ -982,6 +982,13 @@
           }
         }
       }
+    },
+    "Skin" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : { "state" : "translated", "value" : "皮肤" }
+        }
+      }
     }
   },
   "version" : "1.0"

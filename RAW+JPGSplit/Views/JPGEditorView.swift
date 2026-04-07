@@ -364,7 +364,7 @@ struct JPGEditorView: View {
 
         // Apply layer edits with masks
         if layerEdits.hasAnyLayerEdits {
-            for layer in [LayerType.person, .foreground, .background] {
+            for layer in [LayerType.person, .skin, .foreground, .background] {
                 let lp = layerEdits.params(for: layer)
                 if lp.isModified, let mask = segmentation.mask(for: layer, imageExtent: scaled.extent) {
                     scaled = SegmentationService.applyLayerEdits(lp, to: scaled, mask: mask)

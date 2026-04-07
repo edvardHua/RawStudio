@@ -4,6 +4,7 @@ import Foundation
 enum LayerType: String, Codable, CaseIterable, Identifiable {
     case global
     case person
+    case skin
     case foreground
     case background
 
@@ -13,6 +14,7 @@ enum LayerType: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .global: return String(localized: "Global")
         case .person: return String(localized: "Person")
+        case .skin: return String(localized: "Skin")
         case .foreground: return String(localized: "Foreground")
         case .background: return String(localized: "Background")
         }
@@ -22,6 +24,7 @@ enum LayerType: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .global: return "photo"
         case .person: return "person.fill"
+        case .skin: return "hand.raised.fill"
         case .foreground: return "square.stack.3d.up.fill"
         case .background: return "mountain.2.fill"
         }
@@ -48,17 +51,19 @@ struct LayerEditParams: Codable, Equatable {
 /// Collection of all layer adjustments for a single image
 struct LayerEdits: Codable, Equatable {
     var person: LayerEditParams = LayerEditParams()
+    var skin: LayerEditParams = LayerEditParams()
     var foreground: LayerEditParams = LayerEditParams()
     var background: LayerEditParams = LayerEditParams()
 
     var hasAnyLayerEdits: Bool {
-        person.isModified || foreground.isModified || background.isModified
+        person.isModified || skin.isModified || foreground.isModified || background.isModified
     }
 
     func params(for layer: LayerType) -> LayerEditParams {
         switch layer {
-        case .global: return LayerEditParams() // global uses separate params
+        case .global: return LayerEditParams()
         case .person: return person
+        case .skin: return skin
         case .foreground: return foreground
         case .background: return background
         }
@@ -68,6 +73,7 @@ struct LayerEdits: Codable, Equatable {
         switch layer {
         case .global: break
         case .person: person = params
+        case .skin: skin = params
         case .foreground: foreground = params
         case .background: background = params
         }
