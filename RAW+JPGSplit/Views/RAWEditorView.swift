@@ -84,11 +84,7 @@ struct RAWEditorView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") {
                         presetStore.saveParams(params, for: assetID)
-                        // Save layer edits
-                        let layerKey = "layerEdits_\(assetID)"
-                        if let data = try? JSONEncoder().encode(layerEdits) {
-                            UserDefaults.standard.set(data, forKey: layerKey)
-                        }
+                        presetStore.saveLayerEdits(layerEdits, for: assetID)
                         onDone(params, layerEdits)
                         dismiss()
                     }

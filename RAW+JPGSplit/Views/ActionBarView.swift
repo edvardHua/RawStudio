@@ -55,12 +55,12 @@ struct ActionBarView: View {
         Menu {
             if let onExportHDR {
                 Button(action: onExportHDR) {
-                    Label("Adaptive HDR (HEIF)", systemImage: "photo.badge.checkmark")
+                    Label("Adaptive HDR (HEIF) — Apple", systemImage: "photo.badge.checkmark")
                 }
             }
             if let onExportUltraHDR {
                 Button(action: onExportUltraHDR) {
-                    Label("Ultra HDR (JPEG)", systemImage: "photo.badge.arrow.down")
+                    Label("Ultra HDR (JPEG) — Universal", systemImage: "photo.badge.arrow.down")
                 }
             }
         } label: {

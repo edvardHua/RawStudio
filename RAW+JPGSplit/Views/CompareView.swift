@@ -333,30 +333,11 @@ struct CompareView: View {
 
             // Load saved edit params for this asset
             currentEditParams = presetStore.loadParams(for: pair.id)
-            let jpgKey = "jpgEditParams_\(pair.id)"
-            if let data = UserDefaults.standard.data(forKey: jpgKey),
-               let jpgParams = try? JSONDecoder().decode(JPGEditParams.self, from: data) {
-                currentJPGEditParams = jpgParams
-            } else {
-                currentJPGEditParams = JPGEditParams()
-            }
+            currentJPGEditParams = presetStore.loadJPGParams(for: pair.id)
 
             // Load saved layer edits
-            let layerKey = "layerEdits_\(pair.id)"
-            if let data = UserDefaults.standard.data(forKey: layerKey),
-               let le = try? JSONDecoder().decode(LayerEdits.self, from: data) {
-                currentLayerEdits = le
-            } else {
-                currentLayerEdits = LayerEdits()
-            }
-
-            let jpgLayerKey = "layerEdits_jpg_\(pair.id)"
-            if let data = UserDefaults.standard.data(forKey: jpgLayerKey),
-               let le = try? JSONDecoder().decode(LayerEdits.self, from: data) {
-                currentJPGLayerEdits = le
-            } else {
-                currentJPGLayerEdits = LayerEdits()
-            }
+            currentLayerEdits = presetStore.loadLayerEdits(for: pair.id)
+            currentJPGLayerEdits = presetStore.loadJPGLayerEdits(for: pair.id)
 
             // Always load RAW
             let rawResult = try await manager.loadRAWImageWithMetadata(for: pair, editParams: currentEditParams)

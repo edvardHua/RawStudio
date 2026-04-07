@@ -15,6 +15,9 @@ struct JPGEditorView: View {
     @State private var selectedLayer: LayerType = .global
     @State private var layerEdits: LayerEdits
     @State private var segmentation = SegmentationService()
+    @State private var showPresetPicker = false
+    @State private var showSavePreset = false
+    @State private var presetName = ""
     @Environment(\.dismiss) private var dismiss
 
     private let ciContext = CIContext(options: [.useSoftwareRenderer: false])
@@ -98,14 +101,8 @@ struct JPGEditorView: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") {
-                        let jpgKey = "jpgEditParams_\(assetID)"
-                        if let data = try? JSONEncoder().encode(params) {
-                            UserDefaults.standard.set(data, forKey: jpgKey)
-                        }
-                        let layerKey = "layerEdits_jpg_\(assetID)"
-                        if let data = try? JSONEncoder().encode(layerEdits) {
-                            UserDefaults.standard.set(data, forKey: layerKey)
-                        }
+                        presetStore.saveJPGParams(params, for: assetID)
+                        presetStore.saveJPGLayerEdits(layerEdits, for: assetID)
                         onDone(params, layerEdits, previewImage)
                         dismiss()
                     }
@@ -121,6 +118,27 @@ struct JPGEditorView: View {
             }
             .onChange(of: layerEdits) { _, _ in
                 Task { await renderPreview() }
+            }
+            .sheet(isPresented: $showPresetPicker) {
+                JPGPresetPickerView(
+                    presetStore: presetStore,
+                    onSelect: { preset in
+                        params = preset.params
+                    }
+                )
+                .presentationDetents([.medium])
+            }
+            .alert("Save Preset", isPresented: $showSavePreset) {
+                TextField("Preset Name", text: $presetName)
+                Button("Save") {
+                    if !presetName.isEmpty {
+                        presetStore.saveJPGPreset(name: presetName, params: params)
+                        presetName = ""
+                    }
+                }
+                Button("Cancel", role: .cancel) { presetName = "" }
+            } message: {
+                Text("Enter a name for this preset")
             }
         }
     }
@@ -153,21 +171,10 @@ struct JPGEditorView: View {
 
             if selectedLayer == .global {
                 // Global JPG editing
-                HStack {
-                    Button {
-                        params.reset()
-                    } label: {
-                        Label("Reset", systemImage: "arrow.counterclockwise")
-                            .font(.caption)
-                    }
-                    .disabled(!params.isModified)
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.white)
-                    Spacer()
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 4)
-                .padding(.bottom, 6)
+                controlsToolbar
+                    .padding(.horizontal, 16)
+                    .padding(.top, 4)
+                    .padding(.bottom, 6)
 
                 tabSelector
                     .padding(.bottom, 8)
@@ -218,6 +225,39 @@ struct JPGEditorView: View {
             set: { layerEdits.setParams($0, for: selectedLayer) }
         )
         LayerParamsView(params: binding)
+    }
+
+    private var controlsToolbar: some View {
+        HStack {
+            Button {
+                params.reset()
+            } label: {
+                Label("Reset", systemImage: "arrow.counterclockwise")
+                    .font(.caption)
+            }
+            .disabled(!params.isModified)
+
+            Spacer()
+
+            Button {
+                showPresetPicker = true
+            } label: {
+                Label("Presets", systemImage: "slider.horizontal.below.square.filled.and.square")
+                    .font(.caption)
+            }
+
+            Spacer()
+
+            Button {
+                showSavePreset = true
+            } label: {
+                Label("Save", systemImage: "square.and.arrow.down")
+                    .font(.caption)
+            }
+            .disabled(!params.isModified)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.white)
     }
 
     private var tabSelector: some View {

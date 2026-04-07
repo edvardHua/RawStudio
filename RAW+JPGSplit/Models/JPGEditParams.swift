@@ -43,3 +43,11 @@ struct JPGEditParams: Codable, Equatable {
         self = JPGEditParams()
     }
 }
+
+/// A named preset containing saved JPG edit parameters.
+struct JPGEditPreset: Codable, Identifiable, Equatable {
+    var id: UUID = UUID()
+    var name: String
+    var params: JPGEditParams
+    var createdAt: Date = Date()
+}

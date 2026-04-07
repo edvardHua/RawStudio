@@ -33,11 +33,22 @@
       }
     },
     "Adaptive HDR (HEIF)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Adaptive HDR (HEIF)"
+          }
+        }
+      }
+    },
+    "Adaptive HDR (HEIF) — Apple" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adaptive HDR (HEIF) — Apple"
           }
         }
       }
@@ -842,11 +853,22 @@
       }
     },
     "Ultra HDR (JPEG)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ultra HDR (JPEG)"
+          }
+        }
+      }
+    },
+    "Ultra HDR (JPEG) — Universal" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ultra HDR (JPEG) — 跨平台"
           }
         }
       }
