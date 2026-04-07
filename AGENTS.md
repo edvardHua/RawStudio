@@ -14,6 +14,7 @@ An iOS app that scans the user's photo library for RAW photos (both RAW+JPG pair
 - **SwiftUI** (iOS 17+, built with Xcode 26.2)
 - **PhotoKit** — PHAsset, PHAssetResource, PHCachingImageManager
 - **CoreImage** — CIRAWFilter for RAW processing, CIFilter chain for JPG editing
+- **Vision** — VNGeneratePersonSegmentationRequest, VNGenerateForegroundInstanceMaskRequest for layer editing
 - **No external dependencies** — everything is native Apple frameworks
 
 ## Build Command
@@ -34,27 +35,28 @@ RAW+JPGSplit/
 │   ├── PhotoPair.swift                # Data model for a RAW (+optional JPG) asset
 │   ├── Album.swift                    # Wraps PHAssetCollection
 │   ├── PhotoMetadata.swift            # EXIF extraction via CGImageSource
-│   ├── RAWEditParams.swift            # 15+ CIRAWFilter parameters (Codable)
-│   ├── JPGEditParams.swift            # CIFilter chain parameters (Codable)
-│   └── LayerEditParams.swift          # Per-layer edit params + LayerEdits collection
+│   ├── RAWEditParams.swift            # 15+ CIRAWFilter parameters (Codable) + RAWEditPreset
+│   ├── JPGEditParams.swift            # CIFilter chain parameters (Codable) + JPGEditPreset
+│   └── LayerEditParams.swift          # Per-layer edit params (LayerType, LayerEditParams, LayerEdits)
 ├── Services/
 │   ├── PhotoLibraryManager.swift      # Core service: fetch, thumbnail, export, operations
-│   ├── RAWEditPresetStore.swift       # Persistence for edit params and named presets
+│   ├── RAWEditPresetStore.swift       # Unified persistence for all edit params and named presets
 │   ├── UltraHDRWriter.swift           # Ultra HDR JPEG encoder (MPF + gain map)
-│   └── SegmentationService.swift      # Vision framework segmentation mask generation
+│   └── SegmentationService.swift      # Vision framework segmentation + skin detection (@Observable)
 ├── Views/
-│   ├── GalleryView.swift              # Main list/grid with filters, batch selection
+│   ├── GalleryView.swift              # Main list/grid with source filter, batch selection, album picker
 │   ├── PhotoCardView.swift            # List item cell
 │   ├── PhotoGridItemView.swift        # Grid item cell
-│   ├── CompareView.swift              # Full-screen photo viewer + actions
-│   ├── ZoomableImageView.swift        # UIScrollView-backed pinch-to-zoom
-│   ├── RAWEditorView.swift            # Full-screen RAW editor (CIRAWFilter)
-│   ├── JPGEditorView.swift            # Full-screen JPG editor (CIFilter chain)
-│   ├── RAWPresetPickerView.swift      # Preset selection sheet
-│   ├── LayerSelectorView.swift        # Layer selector bar + layer parameter sliders
+│   ├── CompareView.swift              # Full-screen photo viewer + actions + delete
+│   ├── ZoomableImageView.swift        # UIScrollView-backed pinch-to-zoom (ZoomableScrollView)
+│   ├── RAWEditorView.swift            # Full-screen RAW editor (CIRAWFilter) with layer editing
+│   ├── JPGEditorView.swift            # Full-screen JPG editor (CIFilter chain) with layer editing
+│   ├── RAWPresetPickerView.swift      # RAW preset selection sheet
+│   ├── JPGPresetPickerView.swift      # JPG preset selection sheet
+│   ├── LayerSelectorView.swift        # Layer selector bar + LayerParamsView sliders
 │   ├── ActionBarView.swift            # Bottom action buttons (keep/split/HDR)
 │   ├── BatchProgressView.swift        # Batch operation overlay
-│   ├── ToastView.swift                # Lightweight top toast
+│   ├── ToastView.swift                # Lightweight top toast (with optional undo)
 │   ├── EmptyStateView.swift           # Empty library state
 │   └── PermissionDeniedView.swift     # Permission guidance
 ├── Localizable.xcstrings              # en + zh-Hans translations
@@ -68,6 +70,7 @@ RAW+JPGSplit/
 - `isRawOnly: Bool` — computed from `jpgResource == nil`
 - NOT `@Observable` — removed to avoid cascading SwiftUI re-renders when thumbnails load
 - Thumbnails stored in `NSCache<NSString, UIImage>` on PhotoLibraryManager
+- No "processed" state tracking — keep/split are pure export actions
 
 ### RAW Detection
 RAW-only assets store their RAW file as `PHAssetResourceType.photo` (not `.alternatePhoto`). We check the UTI via `isRAWType()` to distinguish RAW from JPG when the resource type is `.photo`. Known RAW UTIs: ARW, CR2, CR3, NEF, RAF, ORF, RW2, DNG, PEF, SRW, etc.
@@ -88,10 +91,17 @@ Implemented natively in `UltraHDRWriter.swift` without any C++ dependencies:
 ### Adaptive HDR HEIF
 Uses `CIContext.writeHEIFRepresentation(of: sdrImage, options: [.hdrImage: hdrImage])` — iOS 18+ API that auto-computes gain map.
 
+### Segmentation & Layer Editing
+- `SegmentationService` is `@Observable` — mask property changes trigger UI updates
+- Vision requests run on background thread via `Task.detached` with `nonisolated static` methods
+- Input images forced to 8-bit sRGB via `createCGImage(format: .RGBA8, colorSpace: sRGB)` for Vision compatibility
+- Skin detection: person mask AND YCbCr color thresholding in a single CPU pass
+- RAW editor passes `previewImageForMask: UIImage` (pre-rendered standard CGImage) instead of CIRAWFilter output to avoid HDR format issues
+
 ### Performance Optimizations
 1. **Batch streaming scan**: `AsyncStream` yields results every 50 assets, UI updates incrementally. Scan runs in `Task.detached` on background thread.
 2. **No @Observable on PhotoPair**: Thumbnails in `NSCache`, each cell has its own `@State` thumbnail loaded via `.task(id:)`.
-3. **LazyVStack instead of List**: Proper lazy rendering for sections.
+3. **LazyVStack instead of List**: Proper lazy rendering for sections with pinned headers.
 4. **Static DateFormatter**: Cached for `groupedByDate()`.
 5. **Thumbnail deliveryMode .fastFormat**: Single callback, no degraded → full quality round-trip.
 
@@ -128,6 +138,7 @@ Uses `CIContext.writeHEIFRepresentation(of: sdrImage, options: [.hdrImage: hdrIm
 - **Presets**: Save named presets, load from preset picker, delete
 - **Per-asset persistence**: Edit params saved via RAWEditPresetStore
 - **Applied on export**: HDR exports use saved edit params
+- **Layer editing**: 5 layers (Global / Person / Skin / Foreground / Background) with per-layer adjustments
 
 ### JPG Editor
 - **10 parameters** in 3 tabs: Exposure / Color / Detail
@@ -135,6 +146,14 @@ Uses `CIContext.writeHEIFRepresentation(of: sdrImage, options: [.hdrImage: hdrIm
 - **Presets**: Save/load named presets (separate from RAW presets)
 - **Per-asset persistence**: Edit params saved via RAWEditPresetStore
 - **EXIF orientation handling**: Applies orientation transform before processing to prevent rotation
+- **Layer editing**: Same 5 layers as RAW editor
+
+### Layer Editing (Both Editors)
+- **5 layer types**: Global (full image), Person (VNGeneratePersonSegmentationRequest), Skin (person mask + YCbCr color detection), Foreground (VNGenerateForegroundInstanceMaskRequest), Background (inverted foreground)
+- **Per-layer parameters**: Exposure, Brightness, Contrast, Saturation, Temperature
+- **Mask generation**: On editor open, masks generated in background. For RAW, uses pre-rendered UIImage from CompareView (avoids CIRAWFilter HDR format issues with Vision).
+- **Rendering pipeline**: Global edits → for each layer with modifications, apply CIFilter chain through CIBlendWithMask compositing
+- **Layer edits persisted** per asset via RAWEditPresetStore
 
 ### Localization
 - English (source) + Simplified Chinese (zh-Hans)
