@@ -4,23 +4,29 @@ import CoreImage.CIFilterBuiltins
 import UIKit
 
 /// Generates and caches segmentation masks using Vision framework.
+@Observable
 final class SegmentationService {
     private let ciContext = CIContext(options: [.useSoftwareRenderer: false])
 
-    // Cached masks
-    private var cachedPersonMask: CIImage?
-    private var cachedForegroundMask: CIImage?
-    private var cachedBackgroundMask: CIImage?
+    // Cached masks — @Observable tracks changes, triggers UI updates
+    var cachedPersonMask: CIImage?
+    var cachedForegroundMask: CIImage?
+    var cachedBackgroundMask: CIImage?
     private var cacheID: String = ""
 
     /// Maximum long-edge dimension for Vision input. Smaller = faster.
     private static let maxVisionDimension: CGFloat = 1024
 
     /// Generate all needed masks from a CIImage. Normalizes extent, scales down,
-    /// converts to CGImage, then runs Vision on a background thread.
+    /// forces 8-bit sRGB output, then runs Vision on a background thread.
     func generateMasks(for image: CIImage, identifier: String) async {
-        guard cacheID != identifier else { return } // already cached
+        guard cacheID != identifier else { return }
         cacheID = identifier
+
+        // Reset masks before generating new ones
+        cachedPersonMask = nil
+        cachedForegroundMask = nil
+        cachedBackgroundMask = nil
 
         // 1. Normalize extent origin to (0,0)
         let normalized: CIImage
@@ -43,11 +49,15 @@ final class SegmentationService {
             scaled = normalized
         }
 
-        // 3. Convert to CGImage (guaranteed to succeed with normalized extent)
-        guard let cgImage = ciContext.createCGImage(scaled, from: scaled.extent) else {
-            cachedPersonMask = nil
-            cachedForegroundMask = nil
-            cachedBackgroundMask = nil
+        // 3. Force 8-bit sRGB CGImage for Vision compatibility
+        //    CIRAWFilter may produce HDR/float16 CGImages that Vision doesn't support
+        guard let srgbColorSpace = CGColorSpace(name: CGColorSpace.sRGB),
+              let cgImage = ciContext.createCGImage(
+                  scaled,
+                  from: scaled.extent,
+                  format: .RGBA8,
+                  colorSpace: srgbColorSpace
+              ) else {
             return
         }
 
@@ -84,7 +94,6 @@ final class SegmentationService {
         var scaled = mask.transformed(by: CGAffineTransform(scaleX: scaleX, y: scaleY))
 
         // Align mask origin to match the image extent origin
-        // CIRAWFilter output may have non-zero origin
         let offsetX = imageExtent.origin.x - scaled.extent.origin.x
         let offsetY = imageExtent.origin.y - scaled.extent.origin.y
         if offsetX != 0 || offsetY != 0 {
@@ -132,9 +141,13 @@ final class SegmentationService {
         let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
         do {
             try handler.perform([request])
-            guard let result = request.results?.first else { return nil }
+            guard let result = request.results?.first else {
+                print("[SegmentationService] Person segmentation: no results")
+                return nil
+            }
             return CIImage(cvPixelBuffer: result.pixelBuffer)
         } catch {
+            print("[SegmentationService] Person segmentation error: \(error)")
             return nil
         }
     }
@@ -144,13 +157,17 @@ final class SegmentationService {
         let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
         do {
             try handler.perform([request])
-            guard let observation = request.results?.first else { return nil }
+            guard let observation = request.results?.first else {
+                print("[SegmentationService] Foreground segmentation: no results")
+                return nil
+            }
             let maskBuffer = try observation.generateScaledMaskForImage(
                 forInstances: observation.allInstances,
                 from: handler
             )
             return CIImage(cvPixelBuffer: maskBuffer)
         } catch {
+            print("[SegmentationService] Foreground segmentation error: \(error)")
             return nil
         }
     }
