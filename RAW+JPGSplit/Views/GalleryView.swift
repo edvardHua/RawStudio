@@ -105,8 +105,22 @@ struct GalleryView: View {
                     BatchProgressView(current: manager.batchProgress, total: manager.batchTotal)
                 }
             }
+            .safeAreaInset(edge: .top) {
+                Picker("Source", selection: $sourceFilter) {
+                    ForEach(SourceFilter.allCases, id: \.self) { s in
+                        Text(s.label).tag(s)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(.bar)
+            }
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
+            .onChange(of: sourceFilter) {
+                selectedIDs.removeAll()
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     if isSelecting {
@@ -136,20 +150,11 @@ struct GalleryView: View {
                                 }
                             }
 
-                            // Filter
+                            // Status filter
                             Section {
                                 Picker("Filter", selection: $filter) {
                                     ForEach(GalleryFilter.allCases, id: \.self) { f in
                                         Text(f.label).tag(f)
-                                    }
-                                }
-                            }
-
-                            // Source filter
-                            Section {
-                                Picker("Source", selection: $sourceFilter) {
-                                    ForEach(SourceFilter.allCases, id: \.self) { s in
-                                        Text(s.label).tag(s)
                                     }
                                 }
                             }
@@ -173,12 +178,9 @@ struct GalleryView: View {
                             }
                         } label: {
                             Label("Menu", systemImage: "ellipsis.circle")
-            }
-            .onChange(of: sourceFilter) {
-                selectedIDs.removeAll()
-            }
-        }
-    }
+                        }
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button(isSelecting ? "Cancel" : "Select") {
                         isSelecting.toggle()
@@ -287,20 +289,36 @@ struct GalleryView: View {
     // MARK: - Grid Layout
 
     private var gridContent: some View {
-        ScrollView {
-            LazyVGrid(columns: gridColumns, spacing: 2) {
-                ForEach(filteredPairs) { pair in
-                    PhotoGridItemView(
-                        pair: pair,
-                        isSelecting: isSelecting,
-                        isSelected: selectedIDs.contains(pair.id),
-                        manager: manager
-                    )
-                    .onTapGesture { handleTap(pair) }
+        let grouped = manager.groupedByDate(filteredPairs)
+        return ScrollView {
+            LazyVStack(spacing: 8, pinnedViews: [.sectionHeaders]) {
+                ForEach(grouped, id: \.date) { section in
+                    Section {
+                        LazyVGrid(columns: gridColumns, spacing: 2) {
+                            ForEach(section.pairs) { pair in
+                                PhotoGridItemView(
+                                    pair: pair,
+                                    isSelecting: isSelecting,
+                                    isSelected: selectedIDs.contains(pair.id),
+                                    manager: manager
+                                )
+                                .onTapGesture { handleTap(pair) }
+                            }
+                        }
+                    } header: {
+                        Text(section.date)
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 6)
+                            .background(.bar)
+                    }
                 }
-            }
 
-            scanningMoreIndicator
+                scanningMoreIndicator
+            }
         }
     }
 
