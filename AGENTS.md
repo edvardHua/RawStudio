@@ -100,7 +100,6 @@ Uses `CIContext.writeHEIFRepresentation(of: sdrImage, options: [.hdrImage: hdrIm
 ### Gallery (Main Screen)
 - **Layout**: List (default) or Grid (3-column), togglable from menu
 - **Source filter**: RAW+JPG pairs (default) or RAW-only — **Segmented Control at top** (not in menu)
-- **Status filter**: All / Unprocessed / Processed (in menu)
 - **Album picker**: Browse system smart albums (in Photos app order) and user albums
 - **Grid date grouping**: Grid view shows photos grouped by date with section headers (same as list view)
 - **Batch selection**: Select multiple → action bar appears
@@ -108,7 +107,6 @@ Uses `CIContext.writeHEIFRepresentation(of: sdrImage, options: [.hdrImage: hdrIm
   - RAW-only mode: Adaptive HDR / Ultra HDR buttons directly
 - **Navigation title**: Fixed inline (doesn't collapse on scroll)
 - **Loading states**: Full-screen spinner → list with bottom "scanning more" indicator
-- **Processed photos**: Tappable, opens CompareView in read-only mode with "Reprocess" button
 
 ### Compare View (Photo Viewer)
 - **Full-screen black background** with pinch-to-zoom (UIScrollView-based)
@@ -121,7 +119,8 @@ Uses `CIContext.writeHEIFRepresentation(of: sdrImage, options: [.hdrImage: hdrIm
   - RAW-only: Shows Adaptive HDR / Ultra HDR buttons directly
 - **iCloud handling**: Shows "Downloading from iCloud..." during image loading; back button remains usable. Processing overlay (with `.navigationBarBackButtonHidden`) during save operations.
 - **Swipe navigation**: Left/right swipe between photos (only when not zoomed)
-- **After action**: Toast notification with undo button (3s window) + auto-advance to next unprocessed photo
+- **Delete button**: Trash icon in toolbar, deletes original photo (system confirmation), then advances to next photo
+- **After keep/split action**: Toast notification, stays on current photo (non-destructive export)
 
 ### RAW Editor
 - **15+ parameters** in 4 tabs: Exposure / Color / Detail / Lens
