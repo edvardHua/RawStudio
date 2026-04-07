@@ -99,14 +99,16 @@ Uses `CIContext.writeHEIFRepresentation(of: sdrImage, options: [.hdrImage: hdrIm
 
 ### Gallery (Main Screen)
 - **Layout**: List (default) or Grid (3-column), togglable from menu
-- **Source filter**: RAW+JPG pairs (default) or RAW-only
-- **Status filter**: All / Unprocessed / Processed
+- **Source filter**: RAW+JPG pairs (default) or RAW-only — **Segmented Control at top** (not in menu)
+- **Status filter**: All / Unprocessed / Processed (in menu)
 - **Album picker**: Browse system smart albums (in Photos app order) and user albums
+- **Grid date grouping**: Grid view shows photos grouped by date with section headers (same as list view)
 - **Batch selection**: Select multiple → action bar appears
   - RAW+JPG mode: Keep JPG / Keep RAW / Split + HDR menu
   - RAW-only mode: Adaptive HDR / Ultra HDR buttons directly
 - **Navigation title**: Fixed inline (doesn't collapse on scroll)
 - **Loading states**: Full-screen spinner → list with bottom "scanning more" indicator
+- **Processed photos**: Tappable, opens CompareView in read-only mode with "Reprocess" button
 
 ### Compare View (Photo Viewer)
 - **Full-screen black background** with pinch-to-zoom (UIScrollView-based)
@@ -119,18 +121,20 @@ Uses `CIContext.writeHEIFRepresentation(of: sdrImage, options: [.hdrImage: hdrIm
   - RAW-only: Shows Adaptive HDR / Ultra HDR buttons directly
 - **iCloud handling**: Shows "Downloading from iCloud..." during image loading; back button remains usable. Processing overlay (with `.navigationBarBackButtonHidden`) during save operations.
 - **Swipe navigation**: Left/right swipe between photos (only when not zoomed)
-- **After action**: Toast notification + auto-advance to next unprocessed photo
+- **After action**: Toast notification with undo button (3s window) + auto-advance to next unprocessed photo
 
 ### RAW Editor
 - **15+ parameters** in 4 tabs: Exposure / Color / Detail / Lens
 - **Real-time preview** using CIRAWFilter draft mode (1/4 scale)
 - **Presets**: Save named presets, load from preset picker, delete
-- **Per-asset persistence**: Edit params saved to UserDefaults by asset ID
+- **Per-asset persistence**: Edit params saved via RAWEditPresetStore
 - **Applied on export**: HDR exports use saved edit params
 
 ### JPG Editor
 - **10 parameters** in 3 tabs: Exposure / Color / Detail
 - **CIFilter chain**: CIExposureAdjust, CIColorControls, CITemperatureAndTint, CIHighlightShadowAdjust, CIVibrance, CISharpenLuminance
+- **Presets**: Save/load named presets (separate from RAW presets)
+- **Per-asset persistence**: Edit params saved via RAWEditPresetStore
 - **EXIF orientation handling**: Applies orientation transform before processing to prevent rotation
 
 ### Localization
@@ -146,5 +150,4 @@ Uses `CIContext.writeHEIFRepresentation(of: sdrImage, options: [.hdrImage: hdrIm
 - **iPad optimization**: App works on iPad but doesn't use two-column grid or other iPad-specific layouts.
 - **Date index strip**: Spec mentioned a fast-scroll date index on the right edge — not implemented yet.
 - **Photo library change observation**: App doesn't watch for `PHPhotoLibraryChangeObserver` to detect new imports while running.
-- **Edit params for RAW+JPG pairs**: RAW editor presets work, but JPG edit params don't use the preset system (only per-asset persistence).
 - **Batch HDR export**: Works but doesn't apply per-asset edit params — uses default RAW rendering.
