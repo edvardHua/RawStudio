@@ -923,6 +923,20 @@
           "stringUnit" : { "state" : "translated", "value" : "背景" }
         }
       }
+    },
+    "Reprocess" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : { "state" : "translated", "value" : "重新处理" }
+        }
+      }
+    },
+    "Undo" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : { "state" : "translated", "value" : "撤销" }
+        }
+      }
     }
   },
   "version" : "1.0"

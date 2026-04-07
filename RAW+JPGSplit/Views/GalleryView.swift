@@ -230,7 +230,7 @@ struct GalleryView: View {
             .navigationDestination(item: $navigateToCompareIndex) { index in
                 CompareView(
                     manager: manager,
-                    pairs: filteredPairs.filter { !$0.isProcessed },
+                    pairs: filteredPairs,
                     startIndex: index,
                     presetStore: presetStore
                 )
@@ -350,9 +350,9 @@ struct GalleryView: View {
     private func handleTap(_ pair: PhotoPair) {
         if isSelecting {
             toggleSelect(pair.id)
-        } else if !pair.isProcessed {
-            let unprocessed = filteredPairs.filter { !$0.isProcessed }
-            if let idx = unprocessed.firstIndex(where: { $0.id == pair.id }) {
+        } else {
+            // Allow tapping both processed and unprocessed photos
+            if let idx = filteredPairs.firstIndex(where: { $0.id == pair.id }) {
                 navigateToCompareIndex = idx
             }
         }

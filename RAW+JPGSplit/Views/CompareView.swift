@@ -29,6 +29,7 @@ struct CompareView: View {
     @State private var currentJPGEditParams = JPGEditParams()
     @State private var currentLayerEdits = LayerEdits()
     @State private var currentJPGLayerEdits = LayerEdits()
+    @State private var pendingUndo: (() -> Void)?
     @Environment(\.dismiss) private var dismiss
 
     init(manager: PhotoLibraryManager, pairs: [PhotoPair], startIndex: Int, presetStore: RAWEditPresetStore) {
@@ -141,14 +142,25 @@ struct CompareView: View {
             }
             .safeAreaInset(edge: .bottom) {
                 if let pair = currentPair, !isLoadingImages, !isProcessing {
-                    if pair.isRawOnly {
-                        // RAW-only: show two HDR buttons
+                    if pair.isProcessed {
+                        // Processed: show reprocess button
+                        Button {
+                            pair.processResult = nil
+                        } label: {
+                            Label("Reprocess", systemImage: "arrow.counterclockwise")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                        }
+                        .buttonStyle(.plain)
+                        .background(.ultraThinMaterial)
+                    } else if pair.isRawOnly {
                         ActionBarView(
                             onExportHDR: { exportHDR() },
                             onExportUltraHDR: { exportUltraHDR() }
                         )
                     } else {
-                        // RAW+JPG pair: always show keep/split + HDR menu
                         ActionBarView(
                             onKeepJPG: { performAction(.keepJPG) },
                             onKeepRAW: { performAction(.keepRAW) },
@@ -159,7 +171,7 @@ struct CompareView: View {
                     }
                 }
             }
-            .toast(message: toastMessage, isPresented: $showToast)
+            .toast(message: toastMessage, isPresented: $showToast, undoAction: pendingUndo)
             .alert("Error", isPresented: $showError) {
                 Button("OK") {}
             } message: {
@@ -389,11 +401,20 @@ struct CompareView: View {
                 case .keepRAW: actionLabel = String(localized: "Kept RAW")
                 case .split: actionLabel = String(localized: "Split into two photos")
                 }
-                toastMessage = String(localized: "\(actionLabel) · Original can be recovered from Recently Deleted")
+                toastMessage = actionLabel
+
+                // Set undo action: revert processResult so user can re-process
+                pendingUndo = { [weak pair] in
+                    pair?.processResult = nil
+                }
+
                 withAnimation { showToast = true }
 
-                try? await Task.sleep(for: .seconds(1.5))
-                moveToNextOrDismiss()
+                // Wait for toast duration, then auto-advance
+                try? await Task.sleep(for: .seconds(3.0))
+                if pair.isProcessed {
+                    moveToNextOrDismiss()
+                }
             } catch {
                 isProcessing = false
                 errorMessage = error.localizedDescription
