@@ -989,6 +989,20 @@
           "stringUnit" : { "state" : "translated", "value" : "皮肤" }
         }
       }
+    },
+    "Deleting..." : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : { "state" : "translated", "value" : "正在删除…" }
+        }
+      }
+    },
+    "Original deleted" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : { "state" : "translated", "value" : "原图已删除" }
+        }
+      }
     }
   },
   "version" : "1.0"

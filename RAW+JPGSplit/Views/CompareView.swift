@@ -29,7 +29,6 @@ struct CompareView: View {
     @State private var currentJPGEditParams = JPGEditParams()
     @State private var currentLayerEdits = LayerEdits()
     @State private var currentJPGLayerEdits = LayerEdits()
-    @State private var pendingUndo: (() -> Void)?
     @Environment(\.dismiss) private var dismiss
 
     init(manager: PhotoLibraryManager, pairs: [PhotoPair], startIndex: Int, presetStore: RAWEditPresetStore) {
@@ -112,7 +111,18 @@ struct CompareView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 12) {
-                        // Edit button (for RAW)
+                        // Delete original button
+                        if let pair = currentPair, !pair.isProcessed, !isLoadingImages, !isProcessing {
+                            Button {
+                                deleteOriginal()
+                            } label: {
+                                Image(systemName: "trash")
+                                    .padding(6)
+                                    .background(.ultraThinMaterial, in: Circle())
+                            }
+                        }
+
+                        // Edit button
                         if !isLoadingImages && !isProcessing {
                             Button {
                                 openEditor()
@@ -171,7 +181,7 @@ struct CompareView: View {
                     }
                 }
             }
-            .toast(message: toastMessage, isPresented: $showToast, undoAction: pendingUndo)
+            .toast(message: toastMessage, isPresented: $showToast)
             .alert("Error", isPresented: $showError) {
                 Button("OK") {}
             } message: {
@@ -384,24 +394,32 @@ struct CompareView: View {
                 case .split: actionLabel = String(localized: "Split into two photos")
                 }
                 toastMessage = actionLabel
-
-                // Set undo action: revert processResult so user can re-process
-                pendingUndo = { [weak pair] in
-                    pair?.processResult = nil
-                }
-
                 withAnimation { showToast = true }
 
-                // Wait for toast duration, then auto-advance
-                try? await Task.sleep(for: .seconds(3.0))
-                if pair.isProcessed {
-                    moveToNextOrDismiss()
-                }
+                try? await Task.sleep(for: .seconds(1.5))
+                moveToNextOrDismiss()
             } catch {
                 isProcessing = false
                 errorMessage = error.localizedDescription
                 showError = true
             }
+        }
+    }
+
+    private func deleteOriginal() {
+        guard let pair = currentPair, !isProcessing else { return }
+        Task {
+            isProcessing = true
+            processingMessage = String(localized: "Deleting...")
+
+            await manager.deleteOriginal(for: pair)
+            isProcessing = false
+
+            toastMessage = String(localized: "Original deleted")
+            withAnimation { showToast = true }
+
+            try? await Task.sleep(for: .seconds(1.5))
+            moveToNextOrDismiss()
         }
     }
 

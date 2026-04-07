@@ -431,13 +431,11 @@ final class PhotoLibraryManager {
         case .keepJPG:
             let jpgData = try await extractResourceData(for: jpgResource)
             try await saveAsNewAsset(data: jpgData, resourceType: .photo, originalFilename: jpgResource.originalFilename)
-            await deleteAssetSilently(pair.asset)
             pair.processResult = .keptJPG
 
         case .keepRAW:
             let rawData = try await extractResourceData(for: pair.rawResource)
             try await saveAsNewAsset(data: rawData, resourceType: .photo, originalFilename: pair.rawResource.originalFilename)
-            await deleteAssetSilently(pair.asset)
             pair.processResult = .keptRAW
 
         case .split:
@@ -445,9 +443,13 @@ final class PhotoLibraryManager {
             let rawData = try await extractResourceData(for: pair.rawResource)
             try await saveAsNewAsset(data: jpgData, resourceType: .photo, originalFilename: jpgResource.originalFilename)
             try await saveAsNewAsset(data: rawData, resourceType: .photo, originalFilename: pair.rawResource.originalFilename)
-            await deleteAssetSilently(pair.asset)
             pair.processResult = .split
         }
+    }
+
+    /// Delete the original paired asset (moves to Recently Deleted)
+    func deleteOriginal(for pair: PhotoPair) async {
+        await deleteAssetSilently(pair.asset)
     }
 
     func performBatchAction(_ action: SplitAction, on selectedPairs: [PhotoPair]) async -> (success: Int, failed: Int) {
