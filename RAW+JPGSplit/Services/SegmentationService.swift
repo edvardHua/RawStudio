@@ -81,8 +81,10 @@ final class SegmentationService {
         // Generate skin mask: person mask AND YCbCr skin color detection
         if let personMask = cachedPersonMask {
             cachedSkinMask = Self.generateSkinMask(
-                from: scaled,
+                from: cgImage,
                 personMask: personMask,
+                targetWidth: cgImage.width,
+                targetHeight: cgImage.height,
                 ciContext: ciContext
             )
         } else {
@@ -191,97 +193,110 @@ final class SegmentationService {
 
     // MARK: - Skin Mask Generation
 
-    /// Generate skin mask by intersecting person mask with YCbCr skin color detection.
-    /// Detects all visible skin (face, hands, arms, legs) while excluding clothing.
+    /// Generate skin mask in a single CPU pass: for each pixel, check if it's
+    /// inside the person mask AND has skin-tone color in YCbCr space.
     nonisolated private static func generateSkinMask(
-        from image: CIImage,
+        from cgImage: CGImage,
         personMask: CIImage,
+        targetWidth: Int,
+        targetHeight: Int,
         ciContext: CIContext
     ) -> CIImage? {
-        // 1. Detect skin-colored pixels using YCbCr thresholding
-        //    Skin tones in YCbCr: Y > 80/255, Cb in [77,127]/255, Cr in [133,173]/255
-        let skinColorMask = image.applyingFilter("CIColorMatrix", parameters: [
-            "inputRVector": CIVector(x: 0.299, y: 0.587, z: 0.114, w: 0),  // Y
-            "inputGVector": CIVector(x: -0.169, y: -0.331, z: 0.500, w: 0), // Cb (offset separately)
-            "inputBVector": CIVector(x: 0.500, y: -0.419, z: -0.081, w: 0), // Cr (offset separately)
-            "inputBiasVector": CIVector(x: 0, y: 0.5, z: 0.5, w: 0)
-        ])
+        let width = targetWidth
+        let height = targetHeight
 
-        // Use CIColorClamp + threshold approach:
-        // We need to create a binary mask from YCbCr ranges.
-        // Simpler approach: render to CGImage, threshold in CPU, create mask CIImage.
-        guard let skinCGImage = ciContext.createCGImage(image, from: image.extent,
-                                                         format: .RGBA8,
-                                                         colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!) else {
-            return nil
+        // 1. Render person mask to same-size grayscale CGImage
+        let personMaskScaled = personMask.transformed(by: CGAffineTransform(
+            scaleX: CGFloat(width) / personMask.extent.width,
+            y: CGFloat(height) / personMask.extent.height
+        ))
+
+        guard let srgb = CGColorSpace(name: CGColorSpace.sRGB),
+              let gray = CGColorSpace(name: CGColorSpace.linearGray) else { return nil }
+
+        // Render person mask to grayscale pixel buffer
+        let personExtent = CGRect(x: 0, y: 0, width: width, height: height)
+        var personPixels = Data(count: width * height)
+        personPixels.withUnsafeMutableBytes { ptr in
+            guard let base = ptr.baseAddress else { return }
+            ciContext.render(
+                personMaskScaled,
+                toBitmap: base,
+                rowBytes: width,
+                bounds: personExtent,
+                format: .L8,
+                colorSpace: gray
+            )
         }
 
-        let width = skinCGImage.width
-        let height = skinCGImage.height
-        let bytesPerRow = width * 4
+        // 2. Get image pixel data (already sRGB 8-bit from cgImage)
+        let imgBytesPerRow = cgImage.bytesPerRow
+        guard let imgDataProvider = cgImage.dataProvider,
+              let imgData = imgDataProvider.data,
+              let imgPtr = CFDataGetBytePtr(imgData) else { return nil }
 
-        guard let imageData = skinCGImage.dataProvider?.data,
-              let ptr = CFDataGetBytePtr(imageData) else { return nil }
+        let imgBitsPerPixel = cgImage.bitsPerPixel / 8 // bytes per pixel (3 or 4)
 
-        // Create grayscale mask buffer
+        // 3. Single-pass: check person mask + YCbCr skin color for each pixel
         var maskData = Data(count: width * height)
         maskData.withUnsafeMutableBytes { maskPtr in
-            guard let maskBytes = maskPtr.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return }
+            personPixels.withUnsafeBytes { personPtr in
+                guard let maskBytes = maskPtr.baseAddress?.assumingMemoryBound(to: UInt8.self),
+                      let personBytes = personPtr.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return }
 
-            for y in 0..<height {
-                for x in 0..<width {
-                    let offset = y * bytesPerRow + x * 4
-                    let r = Float(ptr[offset]) / 255.0
-                    let g = Float(ptr[offset + 1]) / 255.0
-                    let b = Float(ptr[offset + 2]) / 255.0
+                for y in 0..<height {
+                    for x in 0..<width {
+                        let pixelIdx = y * width + x
 
-                    // RGB to YCbCr
-                    let yLuma = 0.299 * r + 0.587 * g + 0.114 * b
-                    let cb = 0.5 + (-0.169 * r - 0.331 * g + 0.500 * b)
-                    let cr = 0.5 + (0.500 * r - 0.419 * g - 0.081 * b)
+                        // Check person mask first (fast reject)
+                        let personVal = personBytes[pixelIdx]
+                        if personVal < 128 {
+                            maskBytes[pixelIdx] = 0
+                            continue
+                        }
 
-                    // Skin tone thresholds (normalized 0-1)
-                    let isSkin = yLuma > 0.31 &&
-                                 cb > 0.30 && cb < 0.53 &&
-                                 cr > 0.52 && cr < 0.72
+                        // Read RGB from source image
+                        let imgOffset = y * imgBytesPerRow + x * imgBitsPerPixel
+                        let r = Float(imgPtr[imgOffset]) / 255.0
+                        let g = Float(imgPtr[imgOffset + 1]) / 255.0
+                        let b = Float(imgPtr[imgOffset + 2]) / 255.0
 
-                    maskBytes[y * width + x] = isSkin ? 255 : 0
+                        // RGB to YCbCr
+                        let yLuma = 0.299 * r + 0.587 * g + 0.114 * b
+                        let cb = 0.5 + (-0.169 * r - 0.331 * g + 0.500 * b)
+                        let cr = 0.5 + (0.500 * r - 0.419 * g - 0.081 * b)
+
+                        // Skin tone thresholds (wide range for diverse skin tones)
+                        let isSkin = yLuma > 0.2 &&
+                                     cb > 0.28 && cb < 0.55 &&
+                                     cr > 0.50 && cr < 0.75
+
+                        maskBytes[pixelIdx] = isSkin ? 255 : 0
+                    }
                 }
             }
         }
 
-        // Create CIImage from grayscale mask
+        // 4. Create grayscale CIImage from mask
         guard let provider = CGDataProvider(data: maskData as CFData),
               let grayCGImage = CGImage(
                 width: width, height: height,
                 bitsPerComponent: 8, bitsPerPixel: 8,
                 bytesPerRow: width,
-                space: CGColorSpace(name: CGColorSpace.linearGray)!,
+                space: gray,
                 bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.none.rawValue),
                 provider: provider,
                 decode: nil, shouldInterpolate: false, intent: .defaultIntent
               ) else { return nil }
 
-        let colorSkinMask = CIImage(cgImage: grayCGImage)
+        let skinMask = CIImage(cgImage: grayCGImage)
 
-        // 2. Scale person mask to match color skin mask dimensions
-        let scaleX = colorSkinMask.extent.width / personMask.extent.width
-        let scaleY = colorSkinMask.extent.height / personMask.extent.height
-        let scaledPersonMask = personMask.transformed(by: CGAffineTransform(scaleX: scaleX, y: scaleY))
-
-        // 3. Intersect: skinMask = personMask AND colorSkinMask
-        //    Use CIMultiplyCompositing to combine (both are grayscale, multiply = AND)
-        let intersected = colorSkinMask.applyingFilter("CIMultiplyCompositing", parameters: [
-            "inputBackgroundImage": scaledPersonMask
+        // 5. Soften edges with Gaussian blur
+        let softened = skinMask.applyingFilter("CIGaussianBlur", parameters: [
+            "inputRadius": 3.0
         ])
 
-        // 4. Soften edges with Gaussian blur
-        let softened = intersected.applyingFilter("CIGaussianBlur", parameters: [
-            "inputRadius": 2.0
-        ])
-
-        // Clamp to remove infinite extent from blur
-        return softened.cropped(to: colorSkinMask.extent)
+        return softened.cropped(to: skinMask.extent)
     }
 
     // MARK: - Static: Apply Layer Edits
