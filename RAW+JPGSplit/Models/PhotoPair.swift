@@ -1,12 +1,6 @@
 import Photos
 import UIKit
 
-enum ProcessResult: Equatable {
-    case keptJPG
-    case keptRAW
-    case split
-}
-
 final class PhotoPair: Identifiable {
     let id: String
     let asset: PHAsset
@@ -15,10 +9,6 @@ final class PhotoPair: Identifiable {
     let captureDate: Date
     let fileName: String
     let rawFormatLabel: String
-
-    var processResult: ProcessResult?
-
-    var isProcessed: Bool { processResult != nil }
 
     /// True when this asset has only RAW, no JPG pair
     var isRawOnly: Bool { jpgResource == nil }
@@ -31,7 +21,6 @@ final class PhotoPair: Identifiable {
         self.captureDate = asset.creationDate ?? Date.distantPast
         self.fileName = (jpgResource ?? rawResource).originalFilename
         self.rawFormatLabel = Self.formatLabel(for: rawResource)
-        self.processResult = nil
     }
 
     private static func formatLabel(for resource: PHAssetResource) -> String {

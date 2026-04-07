@@ -1,19 +1,5 @@
 import SwiftUI
 
-enum GalleryFilter: CaseIterable {
-    case all
-    case unprocessed
-    case processed
-
-    var label: String {
-        switch self {
-        case .all: return String(localized: "All")
-        case .unprocessed: return String(localized: "Unprocessed")
-        case .processed: return String(localized: "Processed")
-        }
-    }
-}
-
 enum SourceFilter: CaseIterable {
     case rawJPGPairs
     case rawOnly
@@ -34,7 +20,6 @@ enum GalleryLayout: String {
 struct GalleryView: View {
     @Bindable var manager: PhotoLibraryManager
     var presetStore: RAWEditPresetStore
-    @State private var filter: GalleryFilter = .unprocessed
     @State private var sourceFilter: SourceFilter = .rawJPGPairs
     @State private var layout: GalleryLayout = .list
     @State private var isSelecting = false
@@ -54,18 +39,9 @@ struct GalleryView: View {
     ]
 
     private var filteredPairs: [PhotoPair] {
-        // First filter by source type
-        let sourcePairs: [PhotoPair]
         switch sourceFilter {
-        case .rawJPGPairs: sourcePairs = manager.pairs.filter { !$0.isRawOnly }
-        case .rawOnly: sourcePairs = manager.pairs.filter { $0.isRawOnly }
-        }
-
-        // Then filter by processing status
-        switch filter {
-        case .all: return sourcePairs
-        case .unprocessed: return sourcePairs.filter { !$0.isProcessed }
-        case .processed: return sourcePairs.filter { $0.isProcessed }
+        case .rawJPGPairs: return manager.pairs.filter { !$0.isRawOnly }
+        case .rawOnly: return manager.pairs.filter { $0.isRawOnly }
         }
     }
 
@@ -150,15 +126,6 @@ struct GalleryView: View {
                                 }
                             }
 
-                            // Status filter
-                            Section {
-                                Picker("Filter", selection: $filter) {
-                                    ForEach(GalleryFilter.allCases, id: \.self) { f in
-                                        Text(f.label).tag(f)
-                                    }
-                                }
-                            }
-
                             // Layout toggle
                             Section {
                                 Button {
@@ -212,7 +179,7 @@ struct GalleryView: View {
                 }
             }
             .alert("Confirm", isPresented: $showBatchConfirm) {
-                Button("Confirm", role: .destructive) {
+                Button("Confirm") {
                     executeBatch()
                 }
                 Button("Cancel", role: .cancel) {}
@@ -351,7 +318,6 @@ struct GalleryView: View {
         if isSelecting {
             toggleSelect(pair.id)
         } else {
-            // Allow tapping both processed and unprocessed photos
             if let idx = filteredPairs.firstIndex(where: { $0.id == pair.id }) {
                 navigateToCompareIndex = idx
             }
@@ -373,7 +339,7 @@ struct GalleryView: View {
         case .keepRAW: actionLine = String(localized: "Keep RAW for \(count) photos")
         case .split: actionLine = String(localized: "Split \(count) photos")
         }
-        return actionLine + "\n" + String(localized: "Original RAW+JPG paired photos will be deleted. They can be recovered from Recently Deleted.")
+        return actionLine
     }
 
     private func confirmBatch(_ action: SplitAction) {

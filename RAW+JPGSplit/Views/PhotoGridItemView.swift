@@ -40,24 +40,9 @@ struct PhotoGridItemView: View {
                 .padding(6)
 
                 Spacer()
-
-                // Process result badge
-                if let result = pair.processResult {
-                    HStack {
-                        Spacer()
-                        Text(resultLabel(result))
-                            .font(.system(size: 9, weight: .medium))
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 2)
-                            .background(.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 3))
-                            .foregroundStyle(.white)
-                    }
-                    .padding(6)
-                }
             }
         }
         .clipShape(RoundedRectangle(cornerRadius: 4))
-        .opacity(pair.isProcessed ? 0.5 : 1.0)
         .task(id: pair.id) {
             if let manager, thumbnail == nil {
                 thumbnail = await manager.loadThumbnail(for: pair)
@@ -77,14 +62,6 @@ struct PhotoGridItemView: View {
                 .overlay {
                     ProgressView()
                 }
-        }
-    }
-
-    private func resultLabel(_ result: ProcessResult) -> String {
-        switch result {
-        case .keptJPG: return String(localized: "Kept JPG")
-        case .keptRAW: return String(localized: "Kept RAW")
-        case .split: return String(localized: "Split")
         }
     }
 }

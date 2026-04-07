@@ -431,19 +431,16 @@ final class PhotoLibraryManager {
         case .keepJPG:
             let jpgData = try await extractResourceData(for: jpgResource)
             try await saveAsNewAsset(data: jpgData, resourceType: .photo, originalFilename: jpgResource.originalFilename)
-            pair.processResult = .keptJPG
 
         case .keepRAW:
             let rawData = try await extractResourceData(for: pair.rawResource)
             try await saveAsNewAsset(data: rawData, resourceType: .photo, originalFilename: pair.rawResource.originalFilename)
-            pair.processResult = .keptRAW
 
         case .split:
             let jpgData = try await extractResourceData(for: jpgResource)
             let rawData = try await extractResourceData(for: pair.rawResource)
             try await saveAsNewAsset(data: jpgData, resourceType: .photo, originalFilename: jpgResource.originalFilename)
             try await saveAsNewAsset(data: rawData, resourceType: .photo, originalFilename: pair.rawResource.originalFilename)
-            pair.processResult = .split
         }
     }
 
@@ -564,16 +561,6 @@ final class PhotoLibraryManager {
                 continuation.resume()
             }
         }
-    }
-
-    // MARK: - Filtered access
-
-    var unprocessedPairs: [PhotoPair] {
-        pairs.filter { !$0.isProcessed }
-    }
-
-    var processedPairs: [PhotoPair] {
-        pairs.filter { $0.isProcessed }
     }
 
     /// Groups pairs by date for section headers

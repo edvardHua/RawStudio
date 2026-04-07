@@ -49,12 +49,6 @@ struct PhotoCardView: View {
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(.fill, in: Capsule())
-
-                    if let result = pair.processResult {
-                        Text(resultLabel(result))
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
                 }
             }
 
@@ -68,7 +62,6 @@ struct PhotoCardView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .opacity(pair.isProcessed ? 0.5 : 1.0)
         .task(id: pair.id) {
             if let manager, thumbnail == nil {
                 thumbnail = await manager.loadThumbnail(for: pair)
@@ -88,14 +81,6 @@ struct PhotoCardView: View {
                 .overlay {
                     ProgressView()
                 }
-        }
-    }
-
-    private func resultLabel(_ result: ProcessResult) -> String {
-        switch result {
-        case .keptJPG: return String(localized: "Kept JPG")
-        case .keptRAW: return String(localized: "Kept RAW")
-        case .split: return String(localized: "Split")
         }
     }
 }

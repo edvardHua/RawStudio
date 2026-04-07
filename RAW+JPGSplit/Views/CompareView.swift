@@ -112,7 +112,7 @@ struct CompareView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     HStack(spacing: 12) {
                         // Delete original button
-                        if let pair = currentPair, !pair.isProcessed, !isLoadingImages, !isProcessing {
+                        if let _ = currentPair, !isLoadingImages, !isProcessing {
                             Button {
                                 deleteOriginal()
                             } label: {
@@ -152,20 +152,7 @@ struct CompareView: View {
             }
             .safeAreaInset(edge: .bottom) {
                 if let pair = currentPair, !isLoadingImages, !isProcessing {
-                    if pair.isProcessed {
-                        // Processed: show reprocess button
-                        Button {
-                            pair.processResult = nil
-                        } label: {
-                            Label("Reprocess", systemImage: "arrow.counterclockwise")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
-                        }
-                        .buttonStyle(.plain)
-                        .background(.ultraThinMaterial)
-                    } else if pair.isRawOnly {
+                    if pair.isRawOnly {
                         ActionBarView(
                             onExportHDR: { exportHDR() },
                             onExportUltraHDR: { exportUltraHDR() }
@@ -395,9 +382,6 @@ struct CompareView: View {
                 }
                 toastMessage = actionLabel
                 withAnimation { showToast = true }
-
-                try? await Task.sleep(for: .seconds(1.5))
-                moveToNextOrDismiss()
             } catch {
                 isProcessing = false
                 errorMessage = error.localizedDescription
@@ -424,12 +408,11 @@ struct CompareView: View {
     }
 
     private func moveToNextOrDismiss() {
-        let remaining = pairs.filter { !$0.isProcessed }
-        if remaining.isEmpty {
+        if currentIndex >= pairs.count {
             dismiss()
             return
         }
-        let nextIndex = min(currentIndex, remaining.count - 1)
+        let nextIndex = min(currentIndex, pairs.count - 1)
         navigateTo(nextIndex)
     }
 
