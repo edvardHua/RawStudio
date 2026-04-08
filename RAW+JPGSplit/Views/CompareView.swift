@@ -23,8 +23,8 @@ struct CompareView: View {
     @State private var showError = false
     @State private var showEditor = false
     @State private var showJPGEditor = false
-    @State private var showExportSheet = false
-    @State private var showInfoBubble = false
+    @State private var showMoreMenu = false
+    @State private var showShareSheet = false
     @State private var cachedRawData: Data?
     @State private var cachedJPGData: Data?
     @State private var currentEditParams = RAWEditParams()
@@ -60,88 +60,64 @@ struct CompareView: View {
         ZStack {
             Color.black.ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                if isLoadingImages {
-                    VStack(spacing: 16) {
-                        ProgressView()
-                            .scaleEffect(1.2)
-                            .tint(.white)
-                        Text("Downloading from iCloud...")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if let image = currentDisplayImage {
-                    ZStack {
-                        ZoomableImageView(
-                            image: image,
-                            zoomState: $zoomState,
-                            onSwipeLeft: {
-                                if !isProcessing && currentIndex < pairs.count - 1 {
-                                    navigateTo(currentIndex + 1)
-                                }
-                            },
-                            onSwipeRight: {
-                                if !isProcessing && currentIndex > 0 {
-                                    navigateTo(currentIndex - 1)
-                                }
-                            }
-                        )
+            if isLoadingImages {
+                VStack(spacing: 16) {
+                    ProgressView()
+                        .scaleEffect(1.2)
+                        .tint(.white)
+                    Text("Downloading from iCloud...")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(spacing: 0) {
+                        // Format switcher
+                        formatSwitcher
+                            .padding(.horizontal, 16)
+                            .padding(.top, 4)
+                            .padding(.bottom, 8)
 
-                        // Overlays on image
-                        imageOverlays
-                    }
-                    .onTapGesture {
-                        // Tap image to dismiss info bubble
-                        if showInfoBubble {
-                            withAnimation(.spring(duration: 0.3)) {
-                                showInfoBubble = false
-                            }
+                        // Image
+                        if let image = currentDisplayImage {
+                            ZoomableImageView(
+                                image: image,
+                                zoomState: $zoomState,
+                                onSwipeLeft: {
+                                    if !isProcessing && currentIndex < pairs.count - 1 {
+                                        navigateTo(currentIndex + 1)
+                                    }
+                                },
+                                onSwipeRight: {
+                                    if !isProcessing && currentIndex > 0 {
+                                        navigateTo(currentIndex - 1)
+                                    }
+                                }
+                            )
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .padding(.horizontal, 16)
                         }
+
+                        // EXIF card
+                        if let metadata = currentMetadata {
+                            exifCard(metadata)
+                                .padding(.horizontal, 16)
+                                .padding(.top, 12)
+                        }
+
+                        // Action row
+                        actionRow
+                            .padding(.horizontal, 16)
+                            .padding(.top, 8)
+                            .padding(.bottom, 20)
                     }
                 }
-            }
-            .navigationTitle("\(currentIndex + 1) / \(pairs.count)")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbarBackground(.hidden, for: .navigationBar)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    // Segmented control for RAW/JPG (only for pairs)
-                    if let pair = currentPair, !pair.isRawOnly, !isLoadingImages, !isProcessing {
-                        Picker("Format", selection: $showingRAW) {
-                            Text("RAW").tag(true)
-                            Text("JPG").tag(false)
-                        }
-                        .pickerStyle(.segmented)
-                        .frame(width: 120)
-                        .onChange(of: showingRAW) { _, _ in
-                            zoomState = ZoomState()
-                            withAnimation(.spring(duration: 0.3)) {
-                                showInfoBubble = false
-                            }
-                        }
-                    }
-                }
-            }
-            .safeAreaInset(edge: .bottom) {
-                if !isLoadingImages && !isProcessing {
-                    bottomToolbar
-                }
-            }
-            .toast(message: toastMessage, isPresented: $showToast)
-            .alert("Error", isPresented: $showError) {
-                Button("OK") {}
-            } message: {
-                Text(errorMessage ?? "An unknown error occurred.")
-            }
-            .task {
-                await loadImages()
             }
 
             // Processing overlay
             if isProcessing {
                 Color.black.opacity(0.3)
+                    .ignoresSafeArea()
                     .allowsHitTesting(true)
 
                 VStack(spacing: 16) {
@@ -155,9 +131,43 @@ struct CompareView: View {
                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
             }
         }
+        .navigationTitle("\(currentIndex + 1) / \(pairs.count)")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                if !isLoadingImages && !isProcessing {
+                    HStack(spacing: 2) {
+                        Button { deleteOriginal() } label: {
+                            Image(systemName: "trash")
+                                .font(.system(size: 14))
+                                .frame(width: 36, height: 36)
+                        }
+                        Button { shareImage() } label: {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.system(size: 14))
+                                .frame(width: 36, height: 36)
+                        }
+                    }
+                    .background(.ultraThinMaterial, in: Capsule())
+                }
+            }
+        }
+        .toast(message: toastMessage, isPresented: $showToast)
+        .alert("Error", isPresented: $showError) {
+            Button("OK") {}
+        } message: {
+            Text(errorMessage ?? "An unknown error occurred.")
+        }
+        .task {
+            await loadImages()
+        }
         .navigationBarBackButtonHidden(isProcessing)
-        .confirmationDialog("Export", isPresented: $showExportSheet) {
-            exportSheetButtons
+        .sheet(isPresented: $showShareSheet) {
+            if let image = currentDisplayImage {
+                ShareSheet(items: [image])
+            }
         }
         .fullScreenCover(isPresented: $showEditor) {
             if let rawData = cachedRawData, let pair = currentPair {
@@ -197,159 +207,184 @@ struct CompareView: View {
         }
     }
 
-    // MARK: - Image Overlays (format badge + info button/bubble)
+    // MARK: - Format Switcher
 
-    private var imageOverlays: some View {
-        VStack {
-            HStack(alignment: .top) {
-                // Format badge (top-left)
-                formatBadge
-
-                Spacer()
-
-                // Info button + bubble (top-right)
-                VStack(alignment: .trailing, spacing: 8) {
-                    Button {
-                        withAnimation(.spring(duration: 0.3)) {
-                            showInfoBubble.toggle()
+    @ViewBuilder
+    private var formatSwitcher: some View {
+        if let pair = currentPair {
+            HStack {
+                if pair.isRawOnly {
+                    // Static RAW badge
+                    Text("RAW")
+                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color(red: 0.4, green: 0.8, blue: 0.5).opacity(0.85),
+                                    in: RoundedRectangle(cornerRadius: 8))
+                } else {
+                    // Segmented control for JPG/RAW
+                    HStack(spacing: 0) {
+                        formatTab(label: "JPG", isActive: !showingRAW) {
+                            zoomState = ZoomState()
+                            showingRAW = false
                         }
-                    } label: {
-                        Text("i")
-                            .font(.system(size: 14, weight: .bold, design: .serif))
-                            .foregroundStyle(.white)
-                            .frame(width: 28, height: 28)
-                            .background(.black.opacity(0.4), in: Circle())
+                        formatTab(label: "RAW", isActive: showingRAW) {
+                            zoomState = ZoomState()
+                            showingRAW = true
+                        }
                     }
-
-                    if showInfoBubble, let metadata = currentMetadata {
-                        infoBubble(metadata)
-                            .transition(.scale(scale: 0.5, anchor: .topTrailing).combined(with: .opacity))
-                    }
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
                 }
+                Spacer()
             }
-            .padding(.horizontal, 12)
-            .padding(.top, 8)
-
-            Spacer()
         }
     }
 
-    // MARK: - Format Badge
-
-    private var formatBadge: some View {
-        let isRAW = showingRAW
-        let label = isRAW ? "RAW" : "JPG"
-        let badgeColor: Color = isRAW
-            ? Color(red: 0.4, green: 0.8, blue: 0.5)
-            : Color(red: 1.0, green: 0.85, blue: 0.35)
-
-        return Text(label)
-            .font(.system(size: 13, weight: .bold, design: .rounded))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(badgeColor.opacity(0.85), in: RoundedRectangle(cornerRadius: 6))
-            .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
+    private func formatTab(label: String, isActive: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundStyle(.white.opacity(isActive ? 1 : 0.5))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 6)
+                .background(
+                    isActive
+                        ? (label == "RAW"
+                            ? Color(red: 0.4, green: 0.8, blue: 0.5).opacity(0.85)
+                            : Color(red: 1.0, green: 0.85, blue: 0.35).opacity(0.85))
+                        : Color.clear,
+                    in: RoundedRectangle(cornerRadius: 6)
+                )
+        }
+        .buttonStyle(.plain)
     }
 
-    // MARK: - Info Bubble
+    // MARK: - EXIF Card
 
-    private func infoBubble(_ metadata: PhotoMetadata) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if let model = metadata.cameraModel {
-                infoRow(icon: "camera", text: model)
+    private func exifCard(_ metadata: PhotoMetadata) -> some View {
+        VStack(spacing: 6) {
+            // Row 1: Camera model, dimensions, file size
+            HStack(spacing: 0) {
+                if let model = metadata.cameraModel {
+                    exifItem(text: model, bold: true)
+                    exifDivider
+                }
+                exifItem(text: metadata.dimensions)
+                exifDivider
+                exifItem(text: metadata.fileSizeText)
             }
-            infoRow(icon: "aspectratio", text: metadata.dimensions)
-            infoRow(icon: "doc", text: metadata.fileSizeText)
 
-            if metadata.aperture != nil || metadata.shutterSpeed != nil || metadata.iso != nil {
-                Divider().overlay(.white.opacity(0.2))
-
+            // Row 2: Shooting params
+            HStack(spacing: 0) {
                 if let aperture = metadata.aperture {
-                    infoRow(icon: "camera.aperture", text: String(format: "ƒ/%.1f", aperture))
+                    exifItem(text: String(format: "ƒ/%.1f", aperture), bold: true)
+                    exifDivider
                 }
                 if let shutter = metadata.shutterSpeed {
-                    infoRow(icon: "timer", text: shutter)
+                    exifItem(text: shutter)
+                    exifDivider
                 }
                 if let iso = metadata.iso {
-                    infoRow(icon: "light.max", text: "ISO \(iso)")
+                    exifItem(text: "ISO \(iso)")
                 }
                 if let fl = metadata.focalLength {
-                    infoRow(icon: "scope", text: String(format: "%.0f mm", fl))
+                    exifDivider
+                    exifItem(text: String(format: "%.0fmm", fl))
                 }
             }
         }
-        .padding(12)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-        .frame(width: 180)
     }
 
-    private func infoRow(icon: String, text: String) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 11))
-                .foregroundStyle(.white.opacity(0.6))
-                .frame(width: 16)
-            Text(text)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.white.opacity(0.9))
-        }
+    private func exifItem(text: String, bold: Bool = false) -> some View {
+        Text(text)
+            .font(.system(size: 12, weight: bold ? .semibold : .medium, design: .monospaced))
+            .foregroundStyle(.white.opacity(0.85))
+            .frame(maxWidth: .infinity)
     }
 
-    // MARK: - Bottom Toolbar (Edit / Export / Delete)
+    private var exifDivider: some View {
+        Rectangle()
+            .fill(.white.opacity(0.2))
+            .frame(width: 1, height: 14)
+    }
 
-    private var bottomToolbar: some View {
+    // MARK: - Action Row
+
+    private var actionRow: some View {
         HStack(spacing: 0) {
-            // Edit
-            toolbarButton(icon: "slider.horizontal.3", label: "Edit") {
-                openEditor()
-            }
-
-            Divider().frame(height: 30)
-
-            // Export
-            toolbarButton(icon: "square.and.arrow.up", label: "Export") {
-                showExportSheet = true
-            }
-
-            Divider().frame(height: 30)
-
-            // Delete
-            toolbarButton(icon: "trash", label: "Delete") {
-                deleteOriginal()
+            if let pair = currentPair {
+                if pair.isRawOnly {
+                    // RAW-only: HDR exports + Edit
+                    actionItem(icon: "sun.max", label: "HDR HEIF") { exportHDR() }
+                    actionDivider
+                    actionItem(icon: "sun.max.fill", label: "HDR JPEG") { exportUltraHDR() }
+                    actionDivider
+                    actionItem(icon: "slider.horizontal.3", label: "Edit") { openEditor() }
+                } else {
+                    // RAW+JPG pair
+                    actionItem(icon: "square.and.arrow.down", label: "Save JPG") { performAction(.keepJPG) }
+                    actionDivider
+                    actionItem(icon: "square.and.arrow.down.fill", label: "Save RAW") { performAction(.keepRAW) }
+                    actionDivider
+                    actionItem(icon: "rectangle.split.2x1", label: "Split") { performAction(.split) }
+                    actionDivider
+                    actionItem(icon: "slider.horizontal.3", label: "Edit") { openEditor() }
+                    actionDivider
+                    // More menu (HDR exports)
+                    moreMenuButton
+                }
             }
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, 10)
         .padding(.horizontal, 4)
-        .background(.ultraThinMaterial)
+        .frame(maxWidth: .infinity)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
     }
 
-    private func toolbarButton(icon: String, label: String, action: @escaping () -> Void) -> some View {
+    private func actionItem(icon: String, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(spacing: 4) {
+            VStack(spacing: 3) {
                 Image(systemName: icon)
-                    .font(.title3)
+                    .font(.system(size: 16))
                 Text(label)
-                    .font(.caption)
+                    .font(.system(size: 9))
             }
+            .foregroundStyle(.white.opacity(0.85))
             .frame(maxWidth: .infinity)
         }
         .buttonStyle(.plain)
     }
 
-    // MARK: - Export Sheet
+    private var actionDivider: some View {
+        Rectangle()
+            .fill(.white.opacity(0.15))
+            .frame(width: 1, height: 28)
+    }
 
-    @ViewBuilder
-    private var exportSheetButtons: some View {
-        if let pair = currentPair {
-            if !pair.isRawOnly {
-                Button("Keep JPG") { performAction(.keepJPG) }
-                Button("Keep RAW") { performAction(.keepRAW) }
-                Button("Split (JPG + RAW)") { performAction(.split) }
+    private var moreMenuButton: some View {
+        Menu {
+            Button { exportHDR() } label: {
+                Label("Adaptive HDR — Apple", systemImage: "photo.badge.checkmark")
             }
-            Button("Adaptive HDR — Apple") { exportHDR() }
-            Button("Ultra HDR — Universal") { exportUltraHDR() }
+            Button { exportUltraHDR() } label: {
+                Label("Ultra HDR — Universal", systemImage: "photo.badge.arrow.down")
+            }
+        } label: {
+            VStack(spacing: 3) {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 16))
+                Text("More")
+                    .font(.system(size: 9))
+            }
+            .foregroundStyle(.white.opacity(0.85))
+            .frame(maxWidth: .infinity)
         }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Data Loading
@@ -387,7 +422,6 @@ struct CompareView: View {
 
             showingRAW = true
             zoomState = ZoomState()
-            showInfoBubble = false
         } catch {
             errorMessage = error.localizedDescription
             showError = true
@@ -444,6 +478,11 @@ struct CompareView: View {
                 moveToNextOrDismiss()
             }
         }
+    }
+
+    private func shareImage() {
+        guard currentDisplayImage != nil else { return }
+        showShareSheet = true
     }
 
     private func exportHDR() {
@@ -523,4 +562,16 @@ struct CompareView: View {
             // Silently fail
         }
     }
+}
+
+// MARK: - Share Sheet (UIActivityViewController wrapper)
+
+struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
