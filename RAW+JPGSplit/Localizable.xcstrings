@@ -271,6 +271,7 @@
       }
     },
     "Export" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -342,6 +343,7 @@
       }
     },
     "Format" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -392,6 +394,28 @@
         }
       }
     },
+    "HDR HEIF" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HDR HEIF"
+          }
+        }
+      }
+    },
+    "HDR JPEG" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HDR JPEG"
+          }
+        }
+      }
+    },
     "HDR photo exported to library" : {
       "localizations" : {
         "zh-Hans" : {
@@ -424,10 +448,8 @@
         }
       }
     },
-    "i" : {
-
-    },
     "JPG" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -438,6 +460,7 @@
       }
     },
     "Keep JPG" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -458,6 +481,7 @@
       }
     },
     "Keep RAW" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -568,6 +592,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "摩尔纹消除"
+          }
+        }
+      }
+    },
+    "More" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "更多"
           }
         }
       }
@@ -796,12 +830,34 @@
         }
       }
     },
+    "Save JPG" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存 JPG"
+          }
+        }
+      }
+    },
     "Save Preset" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "保存预设"
+          }
+        }
+      }
+    },
+    "Save RAW" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存 RAW"
           }
         }
       }
@@ -930,6 +986,7 @@
       }
     },
     "Split (JPG + RAW)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -1091,41 +1148,6 @@
             "state" : "translated",
             "value" : "自然饱和度"
           }
-        }
-      }
-    },
-    "More" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "更多" }
-        }
-      }
-    },
-    "HDR HEIF" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "HDR HEIF" }
-        }
-      }
-    },
-    "HDR JPEG" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "HDR JPEG" }
-        }
-      }
-    },
-    "Save JPG" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "保存 JPG" }
-        }
-      }
-    },
-    "Save RAW" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "保存 RAW" }
         }
       }
     }

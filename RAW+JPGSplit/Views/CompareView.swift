@@ -70,47 +70,44 @@ struct CompareView: View {
                         .foregroundStyle(.secondary)
                 }
             } else {
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: 0) {
-                        // Format switcher
-                        formatSwitcher
-                            .padding(.horizontal, 16)
-                            .padding(.top, 4)
-                            .padding(.bottom, 8)
+                VStack(spacing: 0) {
+                    // Format switcher
+                    formatSwitcher
+                        .padding(.horizontal, 16)
+                        .padding(.top, 4)
+                        .padding(.bottom, 8)
 
-                        // Image
-                        if let image = currentDisplayImage {
-                            ZoomableImageView(
-                                image: image,
-                                zoomState: $zoomState,
-                                onSwipeLeft: {
-                                    if !isProcessing && currentIndex < pairs.count - 1 {
-                                        navigateTo(currentIndex + 1)
-                                    }
-                                },
-                                onSwipeRight: {
-                                    if !isProcessing && currentIndex > 0 {
-                                        navigateTo(currentIndex - 1)
-                                    }
+                    // Image — full screen, no rounding, no padding
+                    if let image = currentDisplayImage {
+                        ZoomableImageView(
+                            image: image,
+                            zoomState: $zoomState,
+                            onSwipeLeft: {
+                                if !isProcessing && currentIndex < pairs.count - 1 {
+                                    navigateTo(currentIndex + 1)
                                 }
-                            )
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                            .padding(.horizontal, 16)
-                        }
-
-                        // EXIF card
-                        if let metadata = currentMetadata {
-                            exifCard(metadata)
-                                .padding(.horizontal, 16)
-                                .padding(.top, 12)
-                        }
-
-                        // Action row
-                        actionRow
-                            .padding(.horizontal, 16)
-                            .padding(.top, 8)
-                            .padding(.bottom, 20)
+                            },
+                            onSwipeRight: {
+                                if !isProcessing && currentIndex > 0 {
+                                    navigateTo(currentIndex - 1)
+                                }
+                            }
+                        )
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
+
+                    // EXIF card
+                    if let metadata = currentMetadata {
+                        exifCard(metadata)
+                            .padding(.horizontal, 12)
+                            .padding(.top, 8)
+                    }
+
+                    // Action row
+                    actionRow
+                        .padding(.horizontal, 12)
+                        .padding(.top, 6)
+                        .padding(.bottom, 8)
                 }
             }
 
