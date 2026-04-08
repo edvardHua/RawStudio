@@ -23,6 +23,8 @@ struct CompareView: View {
     @State private var showError = false
     @State private var showEditor = false
     @State private var showJPGEditor = false
+    @State private var showExportSheet = false
+    @State private var showInfoBubble = false
     @State private var cachedRawData: Data?
     @State private var cachedJPGData: Data?
     @State private var currentEditParams = RAWEditParams()
@@ -51,6 +53,8 @@ struct CompareView: View {
     private var currentMetadata: PhotoMetadata? {
         showingRAW ? rawMetadata : jpgMetadata
     }
+
+    // MARK: - Body
 
     var body: some View {
         ZStack {
@@ -84,23 +88,16 @@ struct CompareView: View {
                             }
                         )
 
-                        // Top-left format badge
-                        VStack {
-                            HStack {
-                                formatBadge
-                                Spacer()
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.top, 8)
-
-                            Spacer()
-
-                            // Bottom metadata bar
-                            if let metadata = currentMetadata {
-                                metadataBar(metadata)
+                        // Overlays on image
+                        imageOverlays
+                    }
+                    .onTapGesture {
+                        // Tap image to dismiss info bubble
+                        if showInfoBubble {
+                            withAnimation(.spring(duration: 0.3)) {
+                                showInfoBubble = false
                             }
                         }
-                        .allowsHitTesting(false)
                     }
                 }
             }
@@ -110,62 +107,26 @@ struct CompareView: View {
             .toolbarBackground(.hidden, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    HStack(spacing: 12) {
-                        // Delete original button
-                        if let _ = currentPair, !isLoadingImages, !isProcessing {
-                            Button {
-                                deleteOriginal()
-                            } label: {
-                                Image(systemName: "trash")
-                                    .padding(6)
-                                    .background(.ultraThinMaterial, in: Circle())
-                            }
+                    // Segmented control for RAW/JPG (only for pairs)
+                    if let pair = currentPair, !pair.isRawOnly, !isLoadingImages, !isProcessing {
+                        Picker("Format", selection: $showingRAW) {
+                            Text("RAW").tag(true)
+                            Text("JPG").tag(false)
                         }
-
-                        // Edit button
-                        if !isLoadingImages && !isProcessing {
-                            Button {
-                                openEditor()
-                            } label: {
-                                Image(systemName: "slider.horizontal.3")
-                                    .padding(6)
-                                    .background(.ultraThinMaterial, in: Circle())
-                            }
-                        }
-
-                        // RAW/JPG toggle (only for pairs)
-                        if let pair = currentPair, !pair.isRawOnly, !isLoadingImages, !isProcessing {
-                            Button {
-                                zoomState = ZoomState()
-                                showingRAW.toggle()
-                            } label: {
-                                Text(showingRAW ? "JPG" : "RAW")
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(.ultraThinMaterial, in: Capsule())
+                        .pickerStyle(.segmented)
+                        .frame(width: 120)
+                        .onChange(of: showingRAW) { _, _ in
+                            zoomState = ZoomState()
+                            withAnimation(.spring(duration: 0.3)) {
+                                showInfoBubble = false
                             }
                         }
                     }
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                if let pair = currentPair, !isLoadingImages, !isProcessing {
-                    if pair.isRawOnly {
-                        ActionBarView(
-                            onExportHDR: { exportHDR() },
-                            onExportUltraHDR: { exportUltraHDR() }
-                        )
-                    } else {
-                        ActionBarView(
-                            onKeepJPG: { performAction(.keepJPG) },
-                            onKeepRAW: { performAction(.keepRAW) },
-                            onSplit: { performAction(.split) },
-                            onExportHDR: { exportHDR() },
-                            onExportUltraHDR: { exportUltraHDR() }
-                        )
-                    }
+                if !isLoadingImages && !isProcessing {
+                    bottomToolbar
                 }
             }
             .toast(message: toastMessage, isPresented: $showToast)
@@ -195,6 +156,9 @@ struct CompareView: View {
             }
         }
         .navigationBarBackButtonHidden(isProcessing)
+        .confirmationDialog("Export", isPresented: $showExportSheet) {
+            exportSheetButtons
+        }
         .fullScreenCover(isPresented: $showEditor) {
             if let rawData = cachedRawData, let pair = currentPair {
                 RAWEditorView(
@@ -233,14 +197,51 @@ struct CompareView: View {
         }
     }
 
+    // MARK: - Image Overlays (format badge + info button/bubble)
+
+    private var imageOverlays: some View {
+        VStack {
+            HStack(alignment: .top) {
+                // Format badge (top-left)
+                formatBadge
+
+                Spacer()
+
+                // Info button + bubble (top-right)
+                VStack(alignment: .trailing, spacing: 8) {
+                    Button {
+                        withAnimation(.spring(duration: 0.3)) {
+                            showInfoBubble.toggle()
+                        }
+                    } label: {
+                        Text("i")
+                            .font(.system(size: 14, weight: .bold, design: .serif))
+                            .foregroundStyle(.white)
+                            .frame(width: 28, height: 28)
+                            .background(.black.opacity(0.4), in: Circle())
+                    }
+
+                    if showInfoBubble, let metadata = currentMetadata {
+                        infoBubble(metadata)
+                            .transition(.scale(scale: 0.5, anchor: .topTrailing).combined(with: .opacity))
+                    }
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 8)
+
+            Spacer()
+        }
+    }
+
     // MARK: - Format Badge
 
     private var formatBadge: some View {
         let isRAW = showingRAW
         let label = isRAW ? "RAW" : "JPG"
         let badgeColor: Color = isRAW
-            ? Color(red: 0.4, green: 0.8, blue: 0.5)   // soft green
-            : Color(red: 1.0, green: 0.85, blue: 0.35)  // soft yellow
+            ? Color(red: 0.4, green: 0.8, blue: 0.5)
+            : Color(red: 1.0, green: 0.85, blue: 0.35)
 
         return Text(label)
             .font(.system(size: 13, weight: .bold, design: .rounded))
@@ -251,64 +252,104 @@ struct CompareView: View {
             .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
     }
 
-    // MARK: - Metadata Bar
+    // MARK: - Info Bubble
 
-    private func metadataBar(_ metadata: PhotoMetadata) -> some View {
-        VStack(spacing: 6) {
-            // Camera model + dimensions + file size
-            HStack(spacing: 12) {
-                if let model = metadata.cameraModel {
-                    metadataItem(icon: "camera", text: model)
-                }
-                metadataItem(icon: "aspectratio", text: metadata.dimensions)
-                metadataItem(icon: "doc", text: metadata.fileSizeText)
+    private func infoBubble(_ metadata: PhotoMetadata) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if let model = metadata.cameraModel {
+                infoRow(icon: "camera", text: model)
             }
+            infoRow(icon: "aspectratio", text: metadata.dimensions)
+            infoRow(icon: "doc", text: metadata.fileSizeText)
 
-            // Shooting params
-            HStack(spacing: 16) {
+            if metadata.aperture != nil || metadata.shutterSpeed != nil || metadata.iso != nil {
+                Divider().overlay(.white.opacity(0.2))
+
                 if let aperture = metadata.aperture {
-                    metadataChip(text: String(format: "ƒ/%.1f", aperture))
+                    infoRow(icon: "camera.aperture", text: String(format: "ƒ/%.1f", aperture))
                 }
                 if let shutter = metadata.shutterSpeed {
-                    metadataChip(text: shutter)
+                    infoRow(icon: "timer", text: shutter)
                 }
                 if let iso = metadata.iso {
-                    metadataChip(text: "ISO \(iso)")
+                    infoRow(icon: "light.max", text: "ISO \(iso)")
                 }
                 if let fl = metadata.focalLength {
-                    metadataChip(text: String(format: "%.0fmm", fl))
+                    infoRow(icon: "scope", text: String(format: "%.0f mm", fl))
                 }
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .frame(maxWidth: .infinity)
-        .background(
-            LinearGradient(
-                colors: [.clear, .black.opacity(0.6)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
+        .padding(12)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .frame(width: 180)
     }
 
-    private func metadataItem(icon: String, text: String) -> some View {
-        HStack(spacing: 4) {
+    private func infoRow(icon: String, text: String) -> some View {
+        HStack(spacing: 8) {
             Image(systemName: icon)
-                .font(.system(size: 10))
+                .font(.system(size: 11))
+                .foregroundStyle(.white.opacity(0.6))
+                .frame(width: 16)
             Text(text)
-                .font(.system(size: 11, weight: .medium))
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.white.opacity(0.9))
         }
-        .foregroundStyle(.white.opacity(0.85))
     }
 
-    private func metadataChip(text: String) -> some View {
-        Text(text)
-            .font(.system(size: 12, weight: .semibold, design: .monospaced))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(.white.opacity(0.15), in: RoundedRectangle(cornerRadius: 4))
+    // MARK: - Bottom Toolbar (Edit / Export / Delete)
+
+    private var bottomToolbar: some View {
+        HStack(spacing: 0) {
+            // Edit
+            toolbarButton(icon: "slider.horizontal.3", label: "Edit") {
+                openEditor()
+            }
+
+            Divider().frame(height: 30)
+
+            // Export
+            toolbarButton(icon: "square.and.arrow.up", label: "Export") {
+                showExportSheet = true
+            }
+
+            Divider().frame(height: 30)
+
+            // Delete
+            toolbarButton(icon: "trash", label: "Delete") {
+                deleteOriginal()
+            }
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 4)
+        .background(.ultraThinMaterial)
+    }
+
+    private func toolbarButton(icon: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.title3)
+                Text(label)
+                    .font(.caption)
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Export Sheet
+
+    @ViewBuilder
+    private var exportSheetButtons: some View {
+        if let pair = currentPair {
+            if !pair.isRawOnly {
+                Button("Keep JPG") { performAction(.keepJPG) }
+                Button("Keep RAW") { performAction(.keepRAW) }
+                Button("Split (JPG + RAW)") { performAction(.split) }
+            }
+            Button("Adaptive HDR — Apple") { exportHDR() }
+            Button("Ultra HDR — Universal") { exportUltraHDR() }
+        }
     }
 
     // MARK: - Data Loading
@@ -317,11 +358,9 @@ struct CompareView: View {
         guard let pair = currentPair else { return }
         isLoadingImages = true
         do {
-            // Cache RAW data for editor
             let rawData = try await manager.extractRawData(for: pair.rawResource)
             cachedRawData = rawData
 
-            // Cache JPG data for editor if available
             if let jpgResource = pair.jpgResource {
                 let jpgData = try await manager.extractRawData(for: jpgResource)
                 cachedJPGData = jpgData
@@ -329,20 +368,15 @@ struct CompareView: View {
                 cachedJPGData = nil
             }
 
-            // Load saved edit params for this asset
             currentEditParams = presetStore.loadParams(for: pair.id)
             currentJPGEditParams = presetStore.loadJPGParams(for: pair.id)
-
-            // Load saved layer edits
             currentLayerEdits = presetStore.loadLayerEdits(for: pair.id)
             currentJPGLayerEdits = presetStore.loadJPGLayerEdits(for: pair.id)
 
-            // Always load RAW
             let rawResult = try await manager.loadRAWImageWithMetadata(for: pair, editParams: currentEditParams)
             rawImage = rawResult.0
             rawMetadata = rawResult.1
 
-            // Load JPG only if available
             if let jpgResult = try await manager.loadJPGImageWithMetadata(for: pair) {
                 jpgImage = jpgResult.0
                 jpgMetadata = jpgResult.1
@@ -353,12 +387,15 @@ struct CompareView: View {
 
             showingRAW = true
             zoomState = ZoomState()
+            showInfoBubble = false
         } catch {
             errorMessage = error.localizedDescription
             showError = true
         }
         isLoadingImages = false
     }
+
+    // MARK: - Actions
 
     private func performAction(_ action: SplitAction) {
         guard let pair = currentPair, !isProcessing else { return }
@@ -406,17 +443,7 @@ struct CompareView: View {
                 try? await Task.sleep(for: .seconds(1.5))
                 moveToNextOrDismiss()
             }
-            // If user denied, just dismiss the overlay — no toast, no navigation
         }
-    }
-
-    private func moveToNextOrDismiss() {
-        if currentIndex >= pairs.count {
-            dismiss()
-            return
-        }
-        let nextIndex = min(currentIndex, pairs.count - 1)
-        navigateTo(nextIndex)
     }
 
     private func exportHDR() {
@@ -459,6 +486,15 @@ struct CompareView: View {
         }
     }
 
+    private func moveToNextOrDismiss() {
+        if currentIndex >= pairs.count {
+            dismiss()
+            return
+        }
+        let nextIndex = min(currentIndex, pairs.count - 1)
+        navigateTo(nextIndex)
+    }
+
     private func navigateTo(_ index: Int) {
         guard !isProcessing else { return }
         currentIndex = index
@@ -484,7 +520,7 @@ struct CompareView: View {
             rawImage = rawResult.0
             rawMetadata = rawResult.1
         } catch {
-            // Silently fail — preview stays as-is
+            // Silently fail
         }
     }
 }
