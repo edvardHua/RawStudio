@@ -107,45 +107,6 @@ struct GalleryView: View {
                                 selectedIDs = Set(filteredPairs.map(\.id))
                             }
                         }
-                    } else {
-                        Menu {
-                            // Album picker
-                            Section {
-                                Button {
-                                    showAlbumPicker = true
-                                } label: {
-                                    Label("Albums", systemImage: "folder")
-                                }
-
-                                if manager.selectedAlbum != nil {
-                                    Button {
-                                        Task { await manager.selectAlbum(nil) }
-                                    } label: {
-                                        Label("All Photos", systemImage: "photo.on.rectangle")
-                                    }
-                                }
-                            }
-
-                            // Layout toggle
-                            Section {
-                                Button {
-                                    withAnimation(.easeInOut(duration: 0.25)) {
-                                        layout = layout == .list ? .grid : .list
-                                    }
-                                } label: {
-                                    Label(
-                                        layout == .list
-                                            ? String(localized: "Grid View")
-                                            : String(localized: "List View"),
-                                        systemImage: layout == .list
-                                            ? "square.grid.3x3"
-                                            : "list.bullet"
-                                    )
-                                }
-                            }
-                        } label: {
-                            Label("Menu", systemImage: "ellipsis.circle")
-                        }
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
@@ -160,14 +121,13 @@ struct GalleryView: View {
             }
             .safeAreaInset(edge: .bottom) {
                 if isSelecting && !selectedIDs.isEmpty {
+                    // Batch selection mode: show action buttons
                     if sourceFilter == .rawOnly {
-                        // RAW-only: show two HDR buttons directly
                         ActionBarView(
                             onExportHDR: { confirmBatchHDR("adaptiveHDR") },
                             onExportUltraHDR: { confirmBatchHDR("ultraHDR") }
                         )
                     } else {
-                        // RAW+JPG pairs: show keep/split + HDR menu
                         ActionBarView(
                             onKeepJPG: { confirmBatch(.keepJPG) },
                             onKeepRAW: { confirmBatch(.keepRAW) },
@@ -176,6 +136,9 @@ struct GalleryView: View {
                             onExportUltraHDR: { confirmBatchHDR("ultraHDR") }
                         )
                     }
+                } else if !isSelecting {
+                    // Normal mode: show bottom toolbar with Albums + Layout toggle
+                    galleryBottomBar
                 }
             }
             .alert("Confirm", isPresented: $showBatchConfirm) {
@@ -213,6 +176,41 @@ struct GalleryView: View {
                 )
             }
         }
+    }
+
+    // MARK: - Bottom Toolbar
+
+    private var galleryBottomBar: some View {
+        HStack {
+            // Albums button
+            Button {
+                showAlbumPicker = true
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "folder")
+                    Text(manager.selectedAlbum?.title ?? String(localized: "Albums"))
+                        .lineLimit(1)
+                }
+                .font(.subheadline)
+            }
+            .buttonStyle(.plain)
+
+            Spacer()
+
+            // Layout toggle button
+            Button {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    layout = layout == .list ? .grid : .list
+                }
+            } label: {
+                Image(systemName: layout == .list ? "square.grid.3x3" : "list.bullet")
+                    .font(.title3)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 10)
+        .background(.ultraThinMaterial)
     }
 
     // MARK: - List Layout
