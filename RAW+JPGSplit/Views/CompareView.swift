@@ -58,7 +58,7 @@ struct CompareView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            Color(.systemBackground).ignoresSafeArea()
 
             if isLoadingImages {
                 VStack(spacing: 16) {
@@ -130,8 +130,6 @@ struct CompareView: View {
         }
         .navigationTitle("\(currentIndex + 1) / \(pairs.count)")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarColorScheme(.dark, for: .navigationBar)
-        .toolbarBackground(.hidden, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 if !isLoadingImages && !isProcessing {
@@ -242,7 +240,7 @@ struct CompareView: View {
         Button(action: action) {
             Text(label)
                 .font(.system(size: 13, weight: .bold, design: .rounded))
-                .foregroundStyle(.white.opacity(isActive ? 1 : 0.5))
+                .foregroundStyle(.primary.opacity(isActive ? 1 : 0.5))
                 .padding(.horizontal, 14)
                 .padding(.vertical, 6)
                 .background(
@@ -300,13 +298,13 @@ struct CompareView: View {
     private func exifItem(text: String, bold: Bool = false) -> some View {
         Text(text)
             .font(.system(size: 12, weight: bold ? .semibold : .medium, design: .monospaced))
-            .foregroundStyle(.white.opacity(0.85))
+            .foregroundStyle(.primary.opacity(0.85))
             .frame(maxWidth: .infinity)
     }
 
     private var exifDivider: some View {
         Rectangle()
-            .fill(.white.opacity(0.2))
+            .fill(.primary.opacity(0.2))
             .frame(width: 1, height: 14)
     }
 
@@ -351,7 +349,7 @@ struct CompareView: View {
                 Text(label)
                     .font(.system(size: 9))
             }
-            .foregroundStyle(.white.opacity(0.85))
+            .foregroundStyle(.primary.opacity(0.85))
             .frame(maxWidth: .infinity)
         }
         .buttonStyle(.plain)
@@ -359,7 +357,7 @@ struct CompareView: View {
 
     private var actionDivider: some View {
         Rectangle()
-            .fill(.white.opacity(0.15))
+            .fill(.primary.opacity(0.15))
             .frame(width: 1, height: 28)
     }
 
@@ -378,7 +376,7 @@ struct CompareView: View {
                 Text("More")
                     .font(.system(size: 9))
             }
-            .foregroundStyle(.white.opacity(0.85))
+            .foregroundStyle(.primary.opacity(0.85))
             .frame(maxWidth: .infinity)
         }
         .buttonStyle(.plain)
