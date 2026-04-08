@@ -181,35 +181,41 @@ struct GalleryView: View {
     // MARK: - Bottom Toolbar
 
     private var galleryBottomBar: some View {
-        HStack {
-            // Albums button
+        HStack(spacing: 0) {
             Button {
                 showAlbumPicker = true
             } label: {
-                HStack(spacing: 6) {
+                VStack(spacing: 4) {
                     Image(systemName: "folder")
+                        .font(.title3)
                     Text(manager.selectedAlbum?.title ?? String(localized: "Albums"))
+                        .font(.caption)
                         .lineLimit(1)
                 }
-                .font(.subheadline)
+                .frame(maxWidth: .infinity)
             }
             .buttonStyle(.plain)
 
-            Spacer()
+            Divider()
+                .frame(height: 30)
 
-            // Layout toggle button
             Button {
                 withAnimation(.easeInOut(duration: 0.25)) {
                     layout = layout == .list ? .grid : .list
                 }
             } label: {
-                Image(systemName: layout == .list ? "square.grid.3x3" : "list.bullet")
-                    .font(.title3)
+                VStack(spacing: 4) {
+                    Image(systemName: layout == .list ? "square.grid.3x3" : "list.bullet")
+                        .font(.title3)
+                    Text(layout == .list ? String(localized: "Grid View") : String(localized: "List View"))
+                        .font(.caption)
+                }
+                .frame(maxWidth: .infinity)
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 10)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 4)
         .background(.ultraThinMaterial)
     }
 

@@ -321,6 +321,7 @@
       }
     },
     "Grid View" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -466,6 +467,7 @@
       }
     },
     "List View" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -498,6 +500,7 @@
       }
     },
     "Menu" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
