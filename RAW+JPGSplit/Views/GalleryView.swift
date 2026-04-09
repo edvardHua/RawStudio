@@ -81,15 +81,13 @@ struct GalleryView: View {
                     BatchProgressView(current: manager.batchProgress, total: manager.batchTotal)
                 }
             }
-            .safeAreaInset(edge: .top) {
-                Picker("Source", selection: $sourceFilter) {
-                    ForEach(SourceFilter.allCases, id: \.self) { s in
-                        Text(s.label).tag(s)
-                    }
+            .overlay(alignment: .top) {
+                // Floating source filter capsules
+                if !manager.isLoading || !manager.pairs.isEmpty {
+                    sourceFilterCapsules
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
                 }
-                .pickerStyle(.segmented)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
             }
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
@@ -176,6 +174,37 @@ struct GalleryView: View {
         }
     }
 
+    // MARK: - Source Filter Capsules (Floating Top)
+
+    private var sourceFilterCapsules: some View {
+        HStack(spacing: 8) {
+            filterCapsule(label: String(localized: "RAW+JPG"), isActive: sourceFilter == .rawJPGPairs) {
+                sourceFilter = .rawJPGPairs
+            }
+            filterCapsule(label: String(localized: "RAW Only"), isActive: sourceFilter == .rawOnly) {
+                sourceFilter = .rawOnly
+            }
+            Spacer()
+        }
+    }
+
+    private func filterCapsule(label: String, isActive: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(isActive ? .white : .primary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(
+                    isActive
+                        ? AnyShapeStyle(Color.accentColor)
+                        : AnyShapeStyle(.ultraThinMaterial),
+                    in: Capsule()
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: - Bottom Toolbar (Liquid Glass Capsules)
 
     private var galleryBottomBar: some View {
@@ -214,7 +243,10 @@ struct GalleryView: View {
                 .background(.ultraThinMaterial, in: Capsule())
             }
             .buttonStyle(.plain)
+
+            Spacer()
         }
+        .padding(.horizontal, 16)
         .padding(.bottom, 8)
     }
 
@@ -223,7 +255,7 @@ struct GalleryView: View {
     private var listContent: some View {
         let grouped = manager.groupedByDate(filteredPairs)
         return ScrollView {
-            LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
+            LazyVStack(spacing: 0) {
                 ForEach(grouped, id: \.date) { section in
                     Section {
                         ForEach(section.pairs) { pair in
@@ -261,7 +293,7 @@ struct GalleryView: View {
     private var gridContent: some View {
         let grouped = manager.groupedByDate(filteredPairs)
         return ScrollView {
-            LazyVStack(spacing: 8, pinnedViews: [.sectionHeaders]) {
+            LazyVStack(spacing: 8) {
                 ForEach(grouped, id: \.date) { section in
                     Section {
                         LazyVGrid(columns: gridColumns, spacing: 2) {
