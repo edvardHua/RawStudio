@@ -328,8 +328,8 @@ struct CompareView: View {
                     actionDivider
                     actionItem(icon: "slider.horizontal.3", label: "Edit") { openEditor() }
                     actionDivider
-                    // More menu (HDR exports)
-                    moreMenuButton
+                    // HDR menu
+                    hdrMenuButton
                 }
             }
         }
@@ -359,7 +359,7 @@ struct CompareView: View {
             .frame(width: 1, height: 28)
     }
 
-    private var moreMenuButton: some View {
+    private var hdrMenuButton: some View {
         Menu {
             Button { exportHDR() } label: {
                 Label("Adaptive HDR — Apple", systemImage: "photo.badge.checkmark")
@@ -369,9 +369,9 @@ struct CompareView: View {
             }
         } label: {
             VStack(spacing: 3) {
-                Image(systemName: "ellipsis")
+                Image(systemName: "sun.max.fill")
                     .font(.system(size: 16))
-                Text("More")
+                Text("HDR")
                     .font(.system(size: 9))
             }
             .foregroundStyle(.primary.opacity(0.85))

@@ -997,6 +997,7 @@
       }
     },
     "Split %lld photos" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -1007,6 +1008,7 @@
       }
     },
     "Split into two photos" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -1017,6 +1019,7 @@
       }
     },
     "Splitting photos..." : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {

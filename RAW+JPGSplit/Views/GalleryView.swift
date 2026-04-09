@@ -184,11 +184,11 @@ struct GalleryView: View {
             Button {
                 showAlbumPicker = true
             } label: {
-                VStack(spacing: 4) {
+                VStack(spacing: 5) {
                     Image(systemName: "folder")
-                        .font(.title3)
+                        .font(.title2)
                     Text(manager.selectedAlbum?.title ?? String(localized: "Albums"))
-                        .font(.caption)
+                        .font(.footnote)
                         .lineLimit(1)
                 }
                 .frame(maxWidth: .infinity)
@@ -196,25 +196,25 @@ struct GalleryView: View {
             .buttonStyle(.plain)
 
             Divider()
-                .frame(height: 30)
+                .frame(height: 34)
 
             Button {
                 withAnimation(.easeInOut(duration: 0.25)) {
                     layout = layout == .list ? .grid : .list
                 }
             } label: {
-                VStack(spacing: 4) {
+                VStack(spacing: 5) {
                     Image(systemName: layout == .list ? "square.grid.3x3" : "list.bullet")
-                        .font(.title3)
+                        .font(.title2)
                     Text(layout == .list ? String(localized: "Grid View") : String(localized: "List View"))
-                        .font(.caption)
+                        .font(.footnote)
                 }
                 .frame(maxWidth: .infinity)
             }
             .buttonStyle(.plain)
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 4)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 8)
         .background(.ultraThinMaterial)
     }
 
