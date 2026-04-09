@@ -33,6 +33,10 @@ struct CompareView: View {
     @State private var currentJPGLayerEdits = LayerEdits()
     @Environment(\.dismiss) private var dismiss
 
+    @ScaledMetric(relativeTo: .body) private var capsulePadH: CGFloat = 14
+    @ScaledMetric(relativeTo: .body) private var capsulePadV: CGFloat = 6
+    @ScaledMetric(relativeTo: .body) private var iconButtonSize: CGFloat = 36
+
     init(manager: PhotoLibraryManager, pairs: [PhotoPair], startIndex: Int, presetStore: RAWEditPresetStore) {
         self.manager = manager
         self.pairs = pairs
@@ -136,13 +140,13 @@ struct CompareView: View {
                     HStack(spacing: 2) {
                         Button { deleteOriginal() } label: {
                             Image(systemName: "trash")
-                                .font(.system(size: 14))
-                                .frame(width: 36, height: 36)
+                                .font(.subheadline)
+                                .frame(width: iconButtonSize, height: iconButtonSize)
                         }
                         Button { shareImage() } label: {
                             Image(systemName: "square.and.arrow.up")
-                                .font(.system(size: 14))
-                                .frame(width: 36, height: 36)
+                                .font(.subheadline)
+                                .frame(width: iconButtonSize, height: iconButtonSize)
                         }
                     }
                     .background(.ultraThinMaterial, in: Capsule())
@@ -211,10 +215,10 @@ struct CompareView: View {
                 if pair.isRawOnly {
                     // Static RAW badge
                     Text("RAW")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
+                        .font(.footnote.bold())
                         .foregroundStyle(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
+                        .padding(.horizontal, capsulePadH)
+                        .padding(.vertical, capsulePadV)
                         .background(Color(red: 0.4, green: 0.8, blue: 0.5).opacity(0.85),
                                     in: RoundedRectangle(cornerRadius: 8))
                 } else {
@@ -239,10 +243,10 @@ struct CompareView: View {
     private func formatTab(label: String, isActive: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(label)
-                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .font(.footnote.bold())
                 .foregroundStyle(.primary.opacity(isActive ? 1 : 0.5))
-                .padding(.horizontal, 14)
-                .padding(.vertical, 6)
+                .padding(.horizontal, capsulePadH)
+                .padding(.vertical, capsulePadV)
                 .background(
                     isActive
                         ? (label == "RAW"
@@ -297,7 +301,8 @@ struct CompareView: View {
 
     private func exifItem(text: String, bold: Bool = false) -> some View {
         Text(text)
-            .font(.system(size: 12, weight: bold ? .semibold : .medium, design: .monospaced))
+            .font(bold ? .caption.weight(.semibold) : .caption)
+            .monospacedDigit()
             .foregroundStyle(.primary.opacity(0.85))
             .frame(maxWidth: .infinity)
     }
@@ -343,9 +348,9 @@ struct CompareView: View {
         Button(action: action) {
             VStack(spacing: 3) {
                 Image(systemName: icon)
-                    .font(.system(size: 16))
+                    .font(.body)
                 Text(label)
-                    .font(.system(size: 9))
+                    .font(.caption2)
             }
             .foregroundStyle(.primary.opacity(0.85))
             .frame(maxWidth: .infinity)
@@ -370,9 +375,9 @@ struct CompareView: View {
         } label: {
             VStack(spacing: 3) {
                 Image(systemName: "sun.max.fill")
-                    .font(.system(size: 16))
+                    .font(.body)
                 Text("HDR")
-                    .font(.system(size: 9))
+                    .font(.caption2)
             }
             .foregroundStyle(.primary.opacity(0.85))
             .frame(maxWidth: .infinity)

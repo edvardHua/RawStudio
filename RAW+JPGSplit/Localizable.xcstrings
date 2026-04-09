@@ -471,6 +471,7 @@
       }
     },
     "Keep JPG for %lld photos" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -492,6 +493,7 @@
       }
     },
     "Keep RAW for %lld photos" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -842,6 +844,9 @@
         }
       }
     },
+    "Save JPG for %lld photos" : {
+
+    },
     "Save Preset" : {
       "localizations" : {
         "zh-Hans" : {
@@ -862,6 +867,9 @@
           }
         }
       }
+    },
+    "Save RAW for %lld photos" : {
+
     },
     "Save your current adjustments as a preset to reuse them on other photos." : {
       "localizations" : {

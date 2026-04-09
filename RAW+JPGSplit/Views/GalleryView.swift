@@ -33,6 +33,13 @@ struct GalleryView: View {
     @State private var showAlbumPicker = false
     @State private var visibleDate: String = ""
 
+    @ScaledMetric(relativeTo: .body) private var capsulePadH: CGFloat = 16
+    @ScaledMetric(relativeTo: .body) private var capsulePadV: CGFloat = 10
+    @ScaledMetric(relativeTo: .footnote) private var smallCapsulePadH: CGFloat = 12
+    @ScaledMetric(relativeTo: .footnote) private var smallCapsulePadV: CGFloat = 6
+    @ScaledMetric(relativeTo: .body) private var headerTopSpacer: CGFloat = 120
+    @ScaledMetric(relativeTo: .body) private var iconButtonSize: CGFloat = 36
+
     private let gridColumns = [
         GridItem(.flexible(), spacing: 2),
         GridItem(.flexible(), spacing: 2),
@@ -173,7 +180,7 @@ struct GalleryView: View {
                 } else {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(navigationTitle)
-                            .font(.system(size: 28, weight: .bold))
+                            .font(.largeTitle.bold())
                         if !visibleDate.isEmpty {
                             Text(visibleDate)
                                 .font(.subheadline)
@@ -194,8 +201,8 @@ struct GalleryView: View {
                             }
                         } label: {
                             Image(systemName: "line.3.horizontal.decrease")
-                                .font(.system(size: 16, weight: .medium))
-                                .frame(width: 36, height: 36)
+                                .font(.body)
+                                .frame(width: iconButtonSize, height: iconButtonSize)
                                 .background(.ultraThinMaterial, in: Circle())
                         }
                         .buttonStyle(.plain)
@@ -208,9 +215,9 @@ struct GalleryView: View {
                         }
                     } label: {
                         Text(isSelecting ? String(localized: "Cancel") : String(localized: "Select"))
-                            .font(.system(size: 15, weight: .medium))
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
+                            .font(.subheadline.weight(.medium))
+                            .padding(.horizontal, capsulePadH)
+                            .padding(.vertical, smallCapsulePadV)
                             .background(.ultraThinMaterial, in: Capsule())
                     }
                     .buttonStyle(.plain)
@@ -246,10 +253,10 @@ struct GalleryView: View {
     private func filterCapsule(label: String, isActive: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(label)
-                .font(.system(size: 13, weight: .medium))
+                .font(.footnote.weight(.medium))
                 .foregroundStyle(isActive ? .white : .primary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
+                .padding(.horizontal, smallCapsulePadH)
+                .padding(.vertical, smallCapsulePadV)
                 .background(
                     isActive
                         ? AnyShapeStyle(Color.accentColor)
@@ -292,12 +299,12 @@ struct GalleryView: View {
         Button(action: action) {
             HStack(spacing: 6) {
                 Image(systemName: icon)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.subheadline.weight(.medium))
                 Text(label)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.footnote.weight(.medium))
             }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 9)
+            .padding(.horizontal, capsulePadH)
+            .padding(.vertical, capsulePadV)
             .background(.ultraThinMaterial, in: Capsule())
         }
         .buttonStyle(.plain)
@@ -312,13 +319,13 @@ struct GalleryView: View {
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: "folder")
-                        .font(.system(size: 16, weight: .medium))
+                        .font(.body)
                     Text(manager.selectedAlbum?.title ?? String(localized: "Albums"))
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.subheadline.weight(.medium))
                         .lineLimit(1)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
+                .padding(.horizontal, capsulePadH)
+                .padding(.vertical, capsulePadV)
                 .background(.ultraThinMaterial, in: Capsule())
             }
             .buttonStyle(.plain)
@@ -330,12 +337,12 @@ struct GalleryView: View {
             } label: {
                 HStack(spacing: 6) {
                     Image(systemName: layout == .list ? "square.grid.3x3" : "list.bullet")
-                        .font(.system(size: 16, weight: .medium))
+                        .font(.body)
                     Text(layout == .list ? String(localized: "Grid View") : String(localized: "List View"))
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.subheadline.weight(.medium))
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
+                .padding(.horizontal, capsulePadH)
+                .padding(.vertical, capsulePadV)
                 .background(.ultraThinMaterial, in: Capsule())
             }
             .buttonStyle(.plain)
@@ -353,7 +360,7 @@ struct GalleryView: View {
         return ScrollView {
             LazyVStack(spacing: 0) {
                 // Top spacer so first photo starts below header
-                Color.clear.frame(height: 120)
+                Color.clear.frame(height: headerTopSpacer)
 
                 ForEach(Array(grouped.enumerated()), id: \.element.date) { sectionIndex, section in
                     ForEach(Array(section.pairs.enumerated()), id: \.element.id) { pairIndex, pair in
@@ -388,7 +395,7 @@ struct GalleryView: View {
         return ScrollView {
             LazyVStack(spacing: 2) {
                 // Top spacer so first photo starts below header
-                Color.clear.frame(height: 120)
+                Color.clear.frame(height: headerTopSpacer)
 
                 ForEach(Array(grouped.enumerated()), id: \.element.date) { sectionIndex, section in
                     LazyVGrid(columns: gridColumns, spacing: 2) {
