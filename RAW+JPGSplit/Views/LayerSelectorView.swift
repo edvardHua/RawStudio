@@ -4,15 +4,27 @@ import SwiftUI
 struct LayerSelectorView: View {
     @Binding var selectedLayer: LayerType
     let segmentation: SegmentationService
+    var activeCustomLayers: [LayerType] = []
+    var canAddCustomLayer: Bool = false
+    var onAddCustomLayer: () -> Void = {}
+    var onEditCustomMask: (LayerType) -> Void = { _ in }
+    var onDeleteCustomLayer: (LayerType) -> Void = { _ in }
 
     @ScaledMetric(relativeTo: .caption2) private var padH: CGFloat = 10
     @ScaledMetric(relativeTo: .caption2) private var padV: CGFloat = 5
 
+    /// Layers visible in the selector: Global + auto layers + active custom layers
+    private var visibleLayers: [LayerType] {
+        [.global] + LayerType.autoLayers + activeCustomLayers
+    }
+
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
-                ForEach(LayerType.allCases) { layer in
+                ForEach(visibleLayers) { layer in
                     let available = segmentation.hasContent(for: layer)
+                    let isCustom = layer.isCustom
+
                     Button {
                         if available {
                             withAnimation(.easeInOut(duration: 0.2)) {
@@ -35,16 +47,54 @@ struct LayerSelectorView: View {
                         .padding(.vertical, padV)
                         .background(
                             selectedLayer == layer
-                                ? AnyShapeStyle(Color.accentColor.opacity(0.8))
+                                ? AnyShapeStyle(isCustom ? Color.purple.opacity(0.8) : Color.accentColor.opacity(0.8))
                                 : AnyShapeStyle(.ultraThinMaterial),
                             in: Capsule()
                         )
                     }
                     .buttonStyle(.plain)
                     .disabled(!available)
+                    .if(isCustom) { view in
+                        view.contextMenu {
+                            Button {
+                                onEditCustomMask(layer)
+                            } label: {
+                                Label(String(localized: "Edit Mask"), systemImage: "paintbrush.pointed")
+                            }
+                            Button(role: .destructive) {
+                                onDeleteCustomLayer(layer)
+                            } label: {
+                                Label(String(localized: "Delete Layer"), systemImage: "trash")
+                            }
+                        }
+                    }
                 }
+
+                // Add custom layer button
+                Button(action: onAddCustomLayer) {
+                    Image(systemName: "plus")
+                        .font(.caption2)
+                        .foregroundStyle(.primary.opacity(canAddCustomLayer ? 0.6 : 0.2))
+                        .padding(.horizontal, padH)
+                        .padding(.vertical, padV)
+                        .background(.ultraThinMaterial, in: Capsule())
+                }
+                .disabled(!canAddCustomLayer)
             }
             .padding(.horizontal, 16)
+        }
+    }
+}
+
+// MARK: - Conditional Modifier Helper
+
+private extension View {
+    @ViewBuilder
+    func `if`<Content: View>(_ condition: Bool, transform: (Self) -> Content) -> some View {
+        if condition {
+            transform(self)
+        } else {
+            self
         }
     }
 }

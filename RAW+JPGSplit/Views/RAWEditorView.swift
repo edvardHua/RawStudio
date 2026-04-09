@@ -22,6 +22,10 @@ struct RAWEditorView: View {
     @State private var layerEdits: LayerEdits
     @State private var segmentation = SegmentationService()
     @State private var isMaskLoading = false
+    @State private var customMaskStore = CustomMaskStore()
+    @State private var activeCustomLayers: [LayerType] = []
+    @State private var showMaskPainter = false
+    @State private var editingMaskLayer: LayerType?
     @Environment(\.dismiss) private var dismiss
 
     private let ciContext = CIContext(options: [.useSoftwareRenderer: false])
@@ -97,6 +101,7 @@ struct RAWEditorView: View {
             }
             .task {
                 await generateMasks()
+                loadCustomMasks()
                 await renderPreview()
             }
             .onChange(of: params) { _, _ in
@@ -126,6 +131,27 @@ struct RAWEditorView: View {
             } message: {
                 Text("Enter a name for this preset")
             }
+            .fullScreenCover(isPresented: $showMaskPainter) {
+                if let layer = editingMaskLayer, let img = previewImage {
+                    let existingMask: CGImage? = {
+                        if let ciMask = segmentation.mask(for: layer, imageExtent: CGRect(origin: .zero, size: img.size)) {
+                            let ctx = CIContext()
+                            return ctx.createCGImage(ciMask, from: ciMask.extent)
+                        }
+                        return nil
+                    }()
+                    MaskPainterView(sourceImage: img, existingMask: existingMask) { maskCG in
+                        customMaskStore.saveMask(maskCG, for: assetID, layer: layer)
+                        let ciMask = CIImage(cgImage: maskCG)
+                        segmentation.setCustomMask(ciMask, for: layer)
+                        if !activeCustomLayers.contains(layer) {
+                            activeCustomLayers.append(layer)
+                            activeCustomLayers.sort { $0.rawValue < $1.rawValue }
+                        }
+                        selectedLayer = layer
+                    }
+                }
+            }
         }
     }
 
@@ -154,7 +180,15 @@ struct RAWEditorView: View {
             HStack(spacing: 0) {
                 EditorFormatBadge(format: "RAW")
                     .padding(.leading, 16)
-                LayerSelectorView(selectedLayer: $selectedLayer, segmentation: segmentation)
+                LayerSelectorView(
+                    selectedLayer: $selectedLayer,
+                    segmentation: segmentation,
+                    activeCustomLayers: activeCustomLayers,
+                    canAddCustomLayer: customMaskStore.nextAvailableCustomLayer(for: assetID) != nil,
+                    onAddCustomLayer: { addCustomLayer() },
+                    onEditCustomMask: { layer in editCustomMask(layer) },
+                    onDeleteCustomLayer: { layer in deleteCustomLayer(layer) }
+                )
             }
             .padding(.vertical, 8)
 
@@ -298,7 +332,7 @@ struct RAWEditorView: View {
 
         // Apply layer edits with masks
         if layerEdits.hasAnyLayerEdits {
-            for layer in [LayerType.person, .skin, .foreground, .background] {
+            for layer in LayerType.maskLayers {
                 let lp = layerEdits.params(for: layer)
                 if lp.isModified, let mask = segmentation.mask(for: layer, imageExtent: outputImage.extent) {
                     outputImage = SegmentationService.applyLayerEdits(lp, to: outputImage, mask: mask)
@@ -357,5 +391,38 @@ struct RAWEditorView: View {
 
     private func applyParams(_ params: RAWEditParams, to filter: CIRAWFilter) {
         Self.applyParams(params, to: filter)
+    }
+
+    // MARK: - Custom Layer Management
+
+    private func loadCustomMasks() {
+        activeCustomLayers = customMaskStore.existingCustomLayers(for: assetID)
+        for layer in activeCustomLayers {
+            if let mask = customMaskStore.loadMask(for: assetID, layer: layer) {
+                segmentation.setCustomMask(mask, for: layer)
+            }
+        }
+    }
+
+    private func addCustomLayer() {
+        guard let layer = customMaskStore.nextAvailableCustomLayer(for: assetID) else { return }
+        editingMaskLayer = layer
+        showMaskPainter = true
+    }
+
+    private func editCustomMask(_ layer: LayerType) {
+        editingMaskLayer = layer
+        showMaskPainter = true
+    }
+
+    private func deleteCustomLayer(_ layer: LayerType) {
+        customMaskStore.deleteMask(for: assetID, layer: layer)
+        segmentation.setCustomMask(nil, for: layer)
+        activeCustomLayers.removeAll { $0 == layer }
+        // Reset layer edits for this layer
+        layerEdits.setParams(LayerEditParams(), for: layer)
+        if selectedLayer == layer {
+            selectedLayer = .global
+        }
     }
 }

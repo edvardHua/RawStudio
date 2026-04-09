@@ -13,6 +13,9 @@ final class SegmentationService {
     var cachedSkinMask: CIImage?
     var cachedForegroundMask: CIImage?
     var cachedBackgroundMask: CIImage?
+    var cachedCustom1Mask: CIImage?
+    var cachedCustom2Mask: CIImage?
+    var cachedCustom3Mask: CIImage?
     private var cacheID: String = ""
     private var sourceImageForSkin: CIImage?  // Keep source for skin detection
 
@@ -101,6 +104,9 @@ final class SegmentationService {
         case .skin: raw = cachedSkinMask
         case .foreground: raw = cachedForegroundMask
         case .background: raw = cachedBackgroundMask
+        case .custom1: raw = cachedCustom1Mask
+        case .custom2: raw = cachedCustom2Mask
+        case .custom3: raw = cachedCustom3Mask
         }
 
         guard let mask = raw else { return nil }
@@ -128,6 +134,9 @@ final class SegmentationService {
         case .skin: return cachedSkinMask != nil
         case .foreground: return cachedForegroundMask != nil
         case .background: return cachedBackgroundMask != nil
+        case .custom1: return cachedCustom1Mask != nil
+        case .custom2: return cachedCustom2Mask != nil
+        case .custom3: return cachedCustom3Mask != nil
         }
     }
 
@@ -137,7 +146,20 @@ final class SegmentationService {
         cachedSkinMask = nil
         cachedForegroundMask = nil
         cachedBackgroundMask = nil
+        cachedCustom1Mask = nil
+        cachedCustom2Mask = nil
+        cachedCustom3Mask = nil
         cacheID = ""
+    }
+
+    /// Inject a custom mask for a specific custom layer
+    func setCustomMask(_ mask: CIImage?, for layer: LayerType) {
+        switch layer {
+        case .custom1: cachedCustom1Mask = mask
+        case .custom2: cachedCustom2Mask = mask
+        case .custom3: cachedCustom3Mask = mask
+        default: break
+        }
     }
 
     // MARK: - Private: Vision (runs off main thread)

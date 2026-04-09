@@ -126,12 +126,32 @@
         }
       }
     },
+    "Brush" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "画笔"
+          }
+        }
+      }
+    },
     "Cancel" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "取消"
+          }
+        }
+      }
+    },
+    "Clear" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清除"
           }
         }
       }
@@ -178,6 +198,36 @@
         }
       }
     },
+    "Custom 1" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自定义 1"
+          }
+        }
+      }
+    },
+    "Custom 2" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自定义 2"
+          }
+        }
+      }
+    },
+    "Custom 3" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自定义 3"
+          }
+        }
+      }
+    },
     "Delete" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -185,6 +235,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "删除"
+          }
+        }
+      }
+    },
+    "Delete Layer" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "删除图层"
           }
         }
       }
@@ -250,6 +310,16 @@
         }
       }
     },
+    "Edit Mask" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "编辑蒙版"
+          }
+        }
+      }
+    },
     "Enter a name for this preset" : {
       "localizations" : {
         "zh-Hans" : {
@@ -266,6 +336,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "错误"
+          }
+        }
+      }
+    },
+    "Eraser" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "橡皮擦"
           }
         }
       }
@@ -781,6 +861,16 @@
         }
       }
     },
+    "Redo" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重做"
+          }
+        }
+      }
+    },
     "Reprocess" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -973,6 +1063,16 @@
         }
       }
     },
+    "Size" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "大小"
+          }
+        }
+      }
+    },
     "Source" : {
       "localizations" : {
         "zh-Hans" : {
@@ -1080,6 +1180,16 @@
         }
       }
     },
+    "Tolerance" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "容差"
+          }
+        }
+      }
+    },
     "Ultra HDR" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1159,6 +1269,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "自然饱和度"
+          }
+        }
+      }
+    },
+    "Wand" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "魔棒"
           }
         }
       }
