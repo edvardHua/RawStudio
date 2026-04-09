@@ -299,6 +299,17 @@
         }
       }
     },
+    "Edge Feather" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "边缘过渡"
+          }
+        }
+      }
+    },
     "Edit" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1282,13 +1293,6 @@
             "state" : "translated",
             "value" : "魔棒"
           }
-        }
-      }
-    },
-    "Edge Feather" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : { "state" : "translated", "value" : "边缘过渡" }
         }
       }
     }

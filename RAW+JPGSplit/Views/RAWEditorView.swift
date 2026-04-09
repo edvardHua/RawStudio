@@ -132,7 +132,8 @@ struct RAWEditorView: View {
                 Text("Enter a name for this preset")
             }
             .fullScreenCover(isPresented: $showMaskPainter) {
-                if let layer = editingMaskLayer, let img = previewImage {
+                if let layer = editingMaskLayer {
+                    let img = previewImage ?? UIImage()
                     let existingMask: CGImage? = {
                         if let ciMask = segmentation.mask(for: layer, imageExtent: CGRect(origin: .zero, size: img.size)) {
                             let ctx = CIContext()

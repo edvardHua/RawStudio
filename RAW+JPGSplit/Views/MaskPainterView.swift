@@ -126,7 +126,7 @@ final class MaskCanvasUIView: UIView {
     }
 
     private func setup() {
-        backgroundColor = .black
+        backgroundColor = .systemBackground
         layer.addSublayer(sourceLayer)
         layer.addSublayer(overlayLayer)
         sourceLayer.contentsGravity = .resizeAspect
@@ -448,9 +448,15 @@ struct MaskPainterView: View {
         self.existingMask = existingMask
         self.onDone = onDone
 
-        let w = Int(sourceImage.size.width)
-        let h = Int(sourceImage.size.height)
-        let bitmap = MaskBitmap(width: max(1, w), height: max(1, h))
+        // Limit bitmap size to max 1024px long edge for performance
+        let maxDim: CGFloat = 1024
+        let origW = sourceImage.size.width
+        let origH = sourceImage.size.height
+        let longEdge = max(origW, origH)
+        let scale = longEdge > maxDim ? maxDim / longEdge : 1.0
+        let w = max(1, Int(origW * scale))
+        let h = max(1, Int(origH * scale))
+        let bitmap = MaskBitmap(width: w, height: h)
         if let mask = existingMask {
             bitmap.loadFrom(mask)
         }
