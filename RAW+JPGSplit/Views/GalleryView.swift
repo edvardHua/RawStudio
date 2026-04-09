@@ -52,6 +52,17 @@ struct GalleryView: View {
         return String(localized: "All Photos")
     }
 
+    /// Current date label based on the first visible photo's date
+    private var currentDateLabel: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .long
+        formatter.timeStyle = .none
+        if let first = filteredPairs.first {
+            return formatter.string(from: first.captureDate)
+        }
+        return formatter.string(from: Date())
+    }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -82,39 +93,14 @@ struct GalleryView: View {
                 }
             }
             .overlay(alignment: .top) {
-                // Floating source filter capsules
+                // Custom floating header
                 if !manager.isLoading || !manager.pairs.isEmpty {
-                    sourceFilterCapsules
-                        .padding(.horizontal, 16)
-                        .padding(.top, 8)
+                    galleryHeader
                 }
             }
-            .navigationTitle(navigationTitle)
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarHidden(true)
             .onChange(of: sourceFilter) {
                 selectedIDs.removeAll()
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    if isSelecting {
-                        Button(selectedIDs.count == filteredPairs.count ? "Deselect All" : "Select All") {
-                            if selectedIDs.count == filteredPairs.count {
-                                selectedIDs.removeAll()
-                            } else {
-                                selectedIDs = Set(filteredPairs.map(\.id))
-                            }
-                        }
-                    }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(isSelecting ? "Cancel" : "Select") {
-                        isSelecting.toggle()
-                        if !isSelecting {
-                            selectedIDs.removeAll()
-                        }
-                    }
-                    .disabled(manager.pairs.isEmpty)
-                }
             }
             .safeAreaInset(edge: .bottom) {
                 if isSelecting && !selectedIDs.isEmpty {
@@ -174,27 +160,106 @@ struct GalleryView: View {
         }
     }
 
-    // MARK: - Source Filter Capsules (Floating Top)
+    // MARK: - Gallery Header (Floating, iOS Photos style)
 
-    private var sourceFilterCapsules: some View {
-        HStack(spacing: 8) {
-            filterCapsule(label: String(localized: "RAW+JPG"), isActive: sourceFilter == .rawJPGPairs) {
-                sourceFilter = .rawJPGPairs
+    private var galleryHeader: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .top) {
+                // Left: Title + Date
+                if isSelecting {
+                    // Selecting mode: show select all / deselect all
+                    Button(selectedIDs.count == filteredPairs.count
+                           ? String(localized: "Deselect All")
+                           : String(localized: "Select All")) {
+                        if selectedIDs.count == filteredPairs.count {
+                            selectedIDs.removeAll()
+                        } else {
+                            selectedIDs = Set(filteredPairs.map(\.id))
+                        }
+                    }
+                    .font(.body)
+                } else {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(navigationTitle)
+                            .font(.system(size: 28, weight: .bold))
+                        Text(currentDateLabel)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                // Right: Source filter + Select/Cancel
+                HStack(spacing: 8) {
+                    if !isSelecting {
+                        // Source filter capsule (compact)
+                        Menu {
+                            Picker("Source", selection: $sourceFilter) {
+                                ForEach(SourceFilter.allCases, id: \.self) { s in
+                                    Text(s.label).tag(s)
+                                }
+                            }
+                        } label: {
+                            Image(systemName: "line.3.horizontal.decrease")
+                                .font(.system(size: 16, weight: .medium))
+                                .frame(width: 36, height: 36)
+                                .background(.ultraThinMaterial, in: Circle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    // Select / Cancel button
+                    Button {
+                        isSelecting.toggle()
+                        if !isSelecting {
+                            selectedIDs.removeAll()
+                        }
+                    } label: {
+                        Text(isSelecting ? String(localized: "Cancel") : String(localized: "Select"))
+                            .font(.system(size: 15, weight: .medium))
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(.ultraThinMaterial, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(manager.pairs.isEmpty)
+                }
             }
-            filterCapsule(label: String(localized: "RAW Only"), isActive: sourceFilter == .rawOnly) {
-                sourceFilter = .rawOnly
+            .padding(.horizontal, 16)
+            .padding(.top, 4)
+            .padding(.bottom, 8)
+
+            // Source filter pills below title (when not selecting)
+            if !isSelecting {
+                HStack(spacing: 8) {
+                    filterCapsule(
+                        label: String(localized: "RAW+JPG"),
+                        isActive: sourceFilter == .rawJPGPairs
+                    ) { sourceFilter = .rawJPGPairs }
+
+                    filterCapsule(
+                        label: String(localized: "RAW Only"),
+                        isActive: sourceFilter == .rawOnly
+                    ) { sourceFilter = .rawOnly }
+
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
             }
-            Spacer()
         }
     }
+
+    // MARK: - Source Filter Capsules
 
     private func filterCapsule(label: String, isActive: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(label)
-                .font(.system(size: 14, weight: .medium))
+                .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(isActive ? .white : .primary)
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
                 .background(
                     isActive
                         ? AnyShapeStyle(Color.accentColor)
