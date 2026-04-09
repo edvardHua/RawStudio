@@ -51,9 +51,10 @@ RAW+JPGSplit/
 │   ├── ZoomableImageView.swift        # UIScrollView-backed pinch-to-zoom (ZoomableScrollView)
 │   ├── RAWEditorView.swift            # Full-screen RAW editor (CIRAWFilter) with layer editing
 │   ├── JPGEditorView.swift            # Full-screen JPG editor (CIFilter chain) with layer editing
+│   ├── EditorComponents.swift         # Shared: EditorSlider, EditorTabBar, EditorToolbar, EditorFormatBadge, EditorToggle
 │   ├── RAWPresetPickerView.swift      # RAW preset selection sheet
 │   ├── JPGPresetPickerView.swift      # JPG preset selection sheet
-│   ├── LayerSelectorView.swift        # Layer selector bar + LayerParamsView sliders
+│   ├── LayerSelectorView.swift        # Layer selector (glass capsules) + LayerParamsView
 │   ├── ActionBarView.swift            # Bottom action buttons (keep/split/HDR)
 │   ├── BatchProgressView.swift        # Batch operation overlay
 │   ├── ToastView.swift                # Lightweight top toast (with optional undo)
