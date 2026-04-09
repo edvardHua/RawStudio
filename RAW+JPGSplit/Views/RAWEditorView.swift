@@ -151,8 +151,9 @@ struct RAWEditorView: View {
     private var editorControls: some View {
         VStack(spacing: 0) {
             // Row 1: Format badge + Layer selector (one line)
-            HStack {
+            HStack(spacing: 0) {
                 EditorFormatBadge(format: "RAW")
+                    .padding(.leading, 16)
                 LayerSelectorView(selectedLayer: $selectedLayer, segmentation: segmentation)
             }
             .padding(.vertical, 8)
