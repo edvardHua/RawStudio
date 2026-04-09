@@ -166,33 +166,54 @@ struct GalleryView: View {
     private var galleryHeader: some View {
         VStack(spacing: 0) {
             HStack(alignment: .top) {
-                if isSelecting {
-                    Button(selectedIDs.count == filteredPairs.count
-                           ? String(localized: "Deselect All")
-                           : String(localized: "Select All")) {
-                        if selectedIDs.count == filteredPairs.count {
-                            selectedIDs.removeAll()
-                        } else {
-                            selectedIDs = Set(filteredPairs.map(\.id))
-                        }
-                    }
-                    .font(.body)
-                } else {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(navigationTitle)
-                            .font(.largeTitle.bold())
-                        if !visibleDate.isEmpty {
-                            Text(visibleDate)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
+                // Left: Title + Date (always visible)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(navigationTitle)
+                        .font(.largeTitle.bold())
+                    if !visibleDate.isEmpty {
+                        Text(visibleDate)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
                 }
 
                 Spacer()
 
+                // Right: buttons change based on mode
                 HStack(spacing: 8) {
-                    if !isSelecting {
+                    if isSelecting {
+                        // Select All / Deselect All
+                        Button {
+                            if selectedIDs.count == filteredPairs.count {
+                                selectedIDs.removeAll()
+                            } else {
+                                selectedIDs = Set(filteredPairs.map(\.id))
+                            }
+                        } label: {
+                            Text(selectedIDs.count == filteredPairs.count
+                                 ? String(localized: "Deselect All")
+                                 : String(localized: "Select All"))
+                                .font(.subheadline.weight(.medium))
+                                .padding(.horizontal, capsulePadH)
+                                .padding(.vertical, smallCapsulePadV)
+                                .background(.ultraThinMaterial, in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+
+                        // Cancel
+                        Button {
+                            isSelecting = false
+                            selectedIDs.removeAll()
+                        } label: {
+                            Text(String(localized: "Cancel"))
+                                .font(.subheadline.weight(.medium))
+                                .padding(.horizontal, capsulePadH)
+                                .padding(.vertical, smallCapsulePadV)
+                                .background(.ultraThinMaterial, in: Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    } else {
+                        // Source filter menu
                         Menu {
                             Picker("Source", selection: $sourceFilter) {
                                 ForEach(SourceFilter.allCases, id: \.self) { s in
@@ -206,45 +227,42 @@ struct GalleryView: View {
                                 .background(.ultraThinMaterial, in: Circle())
                         }
                         .buttonStyle(.plain)
-                    }
 
-                    Button {
-                        isSelecting.toggle()
-                        if !isSelecting {
-                            selectedIDs.removeAll()
+                        // Select
+                        Button {
+                            isSelecting = true
+                        } label: {
+                            Text(String(localized: "Select"))
+                                .font(.subheadline.weight(.medium))
+                                .padding(.horizontal, capsulePadH)
+                                .padding(.vertical, smallCapsulePadV)
+                                .background(.ultraThinMaterial, in: Capsule())
                         }
-                    } label: {
-                        Text(isSelecting ? String(localized: "Cancel") : String(localized: "Select"))
-                            .font(.subheadline.weight(.medium))
-                            .padding(.horizontal, capsulePadH)
-                            .padding(.vertical, smallCapsulePadV)
-                            .background(.ultraThinMaterial, in: Capsule())
+                        .buttonStyle(.plain)
+                        .disabled(manager.pairs.isEmpty)
                     }
-                    .buttonStyle(.plain)
-                    .disabled(manager.pairs.isEmpty)
                 }
             }
             .padding(.horizontal, 16)
             .padding(.top, 4)
             .padding(.bottom, 8)
 
-            if !isSelecting {
-                HStack(spacing: 8) {
-                    filterCapsule(
-                        label: String(localized: "RAW+JPG"),
-                        isActive: sourceFilter == .rawJPGPairs
-                    ) { sourceFilter = .rawJPGPairs }
+            // Source filter pills (always visible)
+            HStack(spacing: 8) {
+                filterCapsule(
+                    label: String(localized: "RAW+JPG"),
+                    isActive: sourceFilter == .rawJPGPairs
+                ) { sourceFilter = .rawJPGPairs }
 
-                    filterCapsule(
-                        label: String(localized: "RAW Only"),
-                        isActive: sourceFilter == .rawOnly
-                    ) { sourceFilter = .rawOnly }
+                filterCapsule(
+                    label: String(localized: "RAW Only"),
+                    isActive: sourceFilter == .rawOnly
+                ) { sourceFilter = .rawOnly }
 
-                    Spacer()
-                }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 8)
+                Spacer()
             }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
         }
     }
 
