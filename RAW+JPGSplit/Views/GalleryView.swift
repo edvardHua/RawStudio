@@ -90,20 +90,6 @@ struct GalleryView: View {
                 .pickerStyle(.segmented)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
-                .background(
-                    ZStack {
-                        Rectangle()
-                            .fill(.ultraThinMaterial)
-                            .mask(
-                                LinearGradient(
-                                    colors: [.white, .white, .white.opacity(0)],
-                                    startPoint: .top,
-                                    endPoint: .bottom
-                                )
-                            )
-                    }
-                    .ignoresSafeArea()
-                )
             }
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
@@ -190,62 +176,46 @@ struct GalleryView: View {
         }
     }
 
-    // MARK: - Bottom Toolbar (Liquid Glass Style)
+    // MARK: - Bottom Toolbar (Liquid Glass Capsules)
 
     private var galleryBottomBar: some View {
-        ZStack {
-            // Gradient blur background (bottom to top fade)
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .mask(
-                    LinearGradient(
-                        colors: [.white, .white, .white.opacity(0)],
-                        startPoint: .bottom,
-                        endPoint: .top
-                    )
-                )
-                .frame(height: 100)
-                .ignoresSafeArea()
-
-            // Capsule buttons
-            HStack(spacing: 12) {
-                // Albums capsule
-                Button {
-                    showAlbumPicker = true
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "folder")
-                            .font(.system(size: 16, weight: .medium))
-                        Text(manager.selectedAlbum?.title ?? String(localized: "Albums"))
-                            .font(.system(size: 14, weight: .medium))
-                            .lineLimit(1)
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(.ultraThinMaterial, in: Capsule())
+        HStack(spacing: 12) {
+            // Albums capsule
+            Button {
+                showAlbumPicker = true
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "folder")
+                        .font(.system(size: 16, weight: .medium))
+                    Text(manager.selectedAlbum?.title ?? String(localized: "Albums"))
+                        .font(.system(size: 14, weight: .medium))
+                        .lineLimit(1)
                 }
-                .buttonStyle(.plain)
-
-                // Layout toggle capsule
-                Button {
-                    withAnimation(.easeInOut(duration: 0.25)) {
-                        layout = layout == .list ? .grid : .list
-                    }
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: layout == .list ? "square.grid.3x3" : "list.bullet")
-                            .font(.system(size: 16, weight: .medium))
-                        Text(layout == .list ? String(localized: "Grid View") : String(localized: "List View"))
-                            .font(.system(size: 14, weight: .medium))
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
-                    .background(.ultraThinMaterial, in: Capsule())
-                }
-                .buttonStyle(.plain)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(.ultraThinMaterial, in: Capsule())
             }
-            .padding(.bottom, 4)
+            .buttonStyle(.plain)
+
+            // Layout toggle capsule
+            Button {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    layout = layout == .list ? .grid : .list
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: layout == .list ? "square.grid.3x3" : "list.bullet")
+                        .font(.system(size: 16, weight: .medium))
+                    Text(layout == .list ? String(localized: "Grid View") : String(localized: "List View"))
+                        .font(.system(size: 14, weight: .medium))
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(.ultraThinMaterial, in: Capsule())
+            }
+            .buttonStyle(.plain)
         }
+        .padding(.bottom, 8)
     }
 
     // MARK: - List Layout
