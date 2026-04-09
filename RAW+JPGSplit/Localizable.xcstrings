@@ -966,7 +966,6 @@
       }
     },
     "Source" : {
-      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {

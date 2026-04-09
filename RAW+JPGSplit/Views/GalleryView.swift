@@ -31,6 +31,7 @@ struct GalleryView: View {
     @State private var batchResultMessage = ""
     @State private var navigateToCompareIndex: Int?
     @State private var showAlbumPicker = false
+    @State private var visibleDate: String = ""
 
     private let gridColumns = [
         GridItem(.flexible(), spacing: 2),
@@ -50,17 +51,6 @@ struct GalleryView: View {
             return album.title
         }
         return String(localized: "All Photos")
-    }
-
-    /// Current date label based on the first visible photo's date
-    private var currentDateLabel: String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .long
-        formatter.timeStyle = .none
-        if let first = filteredPairs.first {
-            return formatter.string(from: first.captureDate)
-        }
-        return formatter.string(from: Date())
     }
 
     var body: some View {
@@ -93,7 +83,6 @@ struct GalleryView: View {
                 }
             }
             .overlay(alignment: .top) {
-                // Custom floating header
                 if !manager.isLoading || !manager.pairs.isEmpty {
                     galleryHeader
                 }
@@ -104,22 +93,8 @@ struct GalleryView: View {
             }
             .safeAreaInset(edge: .bottom) {
                 if isSelecting && !selectedIDs.isEmpty {
-                    // Batch selection mode: show action buttons
-                    if sourceFilter == .rawOnly {
-                        ActionBarView(
-                            onExportHDR: { confirmBatchHDR("adaptiveHDR") },
-                            onExportUltraHDR: { confirmBatchHDR("ultraHDR") }
-                        )
-                    } else {
-                        ActionBarView(
-                            onKeepJPG: { confirmBatch(.keepJPG) },
-                            onKeepRAW: { confirmBatch(.keepRAW) },
-                            onExportHDR: { confirmBatchHDR("adaptiveHDR") },
-                            onExportUltraHDR: { confirmBatchHDR("ultraHDR") }
-                        )
-                    }
+                    batchActionCapsules
                 } else if !isSelecting {
-                    // Normal mode: show bottom toolbar with Albums + Layout toggle
                     galleryBottomBar
                 }
             }
@@ -157,17 +132,34 @@ struct GalleryView: View {
                     isPresented: $showAlbumPicker
                 )
             }
+            .onAppear {
+                // Initialize visible date from first photo
+                if visibleDate.isEmpty, let first = filteredPairs.first {
+                    visibleDate = formatDate(first.captureDate)
+                }
+            }
         }
     }
 
-    // MARK: - Gallery Header (Floating, iOS Photos style)
+    // MARK: - Date Formatting
+
+    private static let sectionDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateStyle = .long
+        f.timeStyle = .none
+        return f
+    }()
+
+    private func formatDate(_ date: Date) -> String {
+        Self.sectionDateFormatter.string(from: date)
+    }
+
+    // MARK: - Gallery Header
 
     private var galleryHeader: some View {
         VStack(spacing: 0) {
             HStack(alignment: .top) {
-                // Left: Title + Date
                 if isSelecting {
-                    // Selecting mode: show select all / deselect all
                     Button(selectedIDs.count == filteredPairs.count
                            ? String(localized: "Deselect All")
                            : String(localized: "Select All")) {
@@ -182,18 +174,18 @@ struct GalleryView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(navigationTitle)
                             .font(.system(size: 28, weight: .bold))
-                        Text(currentDateLabel)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                        if !visibleDate.isEmpty {
+                            Text(visibleDate)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
 
                 Spacer()
 
-                // Right: Source filter + Select/Cancel
                 HStack(spacing: 8) {
                     if !isSelecting {
-                        // Source filter capsule (compact)
                         Menu {
                             Picker("Source", selection: $sourceFilter) {
                                 ForEach(SourceFilter.allCases, id: \.self) { s in
@@ -209,7 +201,6 @@ struct GalleryView: View {
                         .buttonStyle(.plain)
                     }
 
-                    // Select / Cancel button
                     Button {
                         isSelecting.toggle()
                         if !isSelecting {
@@ -230,7 +221,6 @@ struct GalleryView: View {
             .padding(.top, 4)
             .padding(.bottom, 8)
 
-            // Source filter pills below title (when not selecting)
             if !isSelecting {
                 HStack(spacing: 8) {
                     filterCapsule(
@@ -251,7 +241,7 @@ struct GalleryView: View {
         }
     }
 
-    // MARK: - Source Filter Capsules
+    // MARK: - Filter Capsule
 
     private func filterCapsule(label: String, isActive: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
@@ -270,11 +260,53 @@ struct GalleryView: View {
         .buttonStyle(.plain)
     }
 
+    // MARK: - Batch Action Capsules (Glass Style)
+
+    private var batchActionCapsules: some View {
+        HStack(spacing: 10) {
+            if sourceFilter == .rawOnly {
+                batchCapsule(icon: "sun.max", label: "HDR HEIF") {
+                    confirmBatchHDR("adaptiveHDR")
+                }
+                batchCapsule(icon: "sun.max.fill", label: "HDR JPEG") {
+                    confirmBatchHDR("ultraHDR")
+                }
+            } else {
+                batchCapsule(icon: "square.and.arrow.down", label: "Save JPG") {
+                    confirmBatch(.keepJPG)
+                }
+                batchCapsule(icon: "square.and.arrow.down.fill", label: "Save RAW") {
+                    confirmBatch(.keepRAW)
+                }
+                batchCapsule(icon: "sun.max.fill", label: "HDR") {
+                    confirmBatchHDR("adaptiveHDR")
+                }
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+    }
+
+    private func batchCapsule(icon: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 14, weight: .medium))
+                Text(label)
+                    .font(.system(size: 13, weight: .medium))
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+            .background(.ultraThinMaterial, in: Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: - Bottom Toolbar (Liquid Glass Capsules)
 
     private var galleryBottomBar: some View {
         HStack(spacing: 12) {
-            // Albums capsule
             Button {
                 showAlbumPicker = true
             } label: {
@@ -291,7 +323,6 @@ struct GalleryView: View {
             }
             .buttonStyle(.plain)
 
-            // Layout toggle capsule
             Button {
                 withAnimation(.easeInOut(duration: 0.25)) {
                     layout = layout == .list ? .grid : .list
@@ -321,30 +352,27 @@ struct GalleryView: View {
         let grouped = manager.groupedByDate(filteredPairs)
         return ScrollView {
             LazyVStack(spacing: 0) {
-                ForEach(grouped, id: \.date) { section in
-                    Section {
-                        ForEach(section.pairs) { pair in
-                            PhotoCardView(
-                                pair: pair,
-                                isSelecting: isSelecting,
-                                isSelected: selectedIDs.contains(pair.id),
-                                onToggleSelect: { toggleSelect(pair.id) },
-                                manager: manager
-                            )
-                            .contentShape(Rectangle())
-                            .onTapGesture { handleTap(pair) }
+                // Top spacer so first photo starts below header
+                Color.clear.frame(height: 120)
 
-                            Divider().padding(.leading, 100)
+                ForEach(Array(grouped.enumerated()), id: \.element.date) { sectionIndex, section in
+                    ForEach(Array(section.pairs.enumerated()), id: \.element.id) { pairIndex, pair in
+                        PhotoCardView(
+                            pair: pair,
+                            isSelecting: isSelecting,
+                            isSelected: selectedIDs.contains(pair.id),
+                            onToggleSelect: { toggleSelect(pair.id) },
+                            manager: manager
+                        )
+                        .contentShape(Rectangle())
+                        .onTapGesture { handleTap(pair) }
+                        .onAppear {
+                            if pairIndex == 0 {
+                                visibleDate = section.date
+                            }
                         }
-                    } header: {
-                        Text(section.date)
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 6)
-                            .background(.ultraThinMaterial)
+
+                        Divider().padding(.leading, 100)
                     }
                 }
 
@@ -358,29 +386,24 @@ struct GalleryView: View {
     private var gridContent: some View {
         let grouped = manager.groupedByDate(filteredPairs)
         return ScrollView {
-            LazyVStack(spacing: 8) {
-                ForEach(grouped, id: \.date) { section in
-                    Section {
-                        LazyVGrid(columns: gridColumns, spacing: 2) {
-                            ForEach(section.pairs) { pair in
-                                PhotoGridItemView(
-                                    pair: pair,
-                                    isSelecting: isSelecting,
-                                    isSelected: selectedIDs.contains(pair.id),
-                                    manager: manager
-                                )
-                                .onTapGesture { handleTap(pair) }
-                            }
+            LazyVStack(spacing: 2) {
+                // Top spacer so first photo starts below header
+                Color.clear.frame(height: 120)
+
+                ForEach(Array(grouped.enumerated()), id: \.element.date) { sectionIndex, section in
+                    LazyVGrid(columns: gridColumns, spacing: 2) {
+                        ForEach(section.pairs) { pair in
+                            PhotoGridItemView(
+                                pair: pair,
+                                isSelecting: isSelecting,
+                                isSelected: selectedIDs.contains(pair.id),
+                                manager: manager
+                            )
+                            .onTapGesture { handleTap(pair) }
                         }
-                    } header: {
-                        Text(section.date)
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 6)
-                            .background(.ultraThinMaterial)
+                    }
+                    .onAppear {
+                        visibleDate = section.date
                     }
                 }
 
@@ -435,8 +458,8 @@ struct GalleryView: View {
         guard let action = pendingBatchAction else { return "" }
         let actionLine: String
         switch action {
-        case .keepJPG: actionLine = String(localized: "Keep JPG for \(count) photos")
-        case .keepRAW: actionLine = String(localized: "Keep RAW for \(count) photos")
+        case .keepJPG: actionLine = String(localized: "Save JPG for \(count) photos")
+        case .keepRAW: actionLine = String(localized: "Save RAW for \(count) photos")
         }
         return actionLine
     }

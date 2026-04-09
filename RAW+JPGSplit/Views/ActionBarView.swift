@@ -13,11 +13,11 @@ struct ActionBarView: View {
     var body: some View {
         HStack(spacing: 0) {
             if let onKeepJPG {
-                actionButton(title: "Keep JPG", icon: "photo", action: onKeepJPG)
+                actionButton(title: "Save JPG", icon: "photo", action: onKeepJPG)
             }
             if let onKeepRAW {
                 if onKeepJPG != nil { divider }
-                actionButton(title: "Keep RAW", icon: "camera.filters", action: onKeepRAW)
+                actionButton(title: "Save RAW", icon: "camera.filters", action: onKeepRAW)
             }
 
             if hasBasicActions {
