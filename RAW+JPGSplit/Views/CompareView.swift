@@ -326,8 +326,6 @@ struct CompareView: View {
                     actionDivider
                     actionItem(icon: "square.and.arrow.down.fill", label: "Save RAW") { performAction(.keepRAW) }
                     actionDivider
-                    actionItem(icon: "rectangle.split.2x1", label: "Split") { performAction(.split) }
-                    actionDivider
                     actionItem(icon: "slider.horizontal.3", label: "Edit") { openEditor() }
                     actionDivider
                     // More menu (HDR exports)
@@ -433,7 +431,6 @@ struct CompareView: View {
             switch action {
             case .keepJPG: processingMessage = String(localized: "Saving JPG...")
             case .keepRAW: processingMessage = String(localized: "Saving RAW...")
-            case .split: processingMessage = String(localized: "Splitting photos...")
             }
 
             do {
@@ -444,7 +441,6 @@ struct CompareView: View {
                 switch action {
                 case .keepJPG: actionLabel = String(localized: "Kept JPG")
                 case .keepRAW: actionLabel = String(localized: "Kept RAW")
-                case .split: actionLabel = String(localized: "Split into two photos")
                 }
                 toastMessage = actionLabel
                 withAnimation { showToast = true }

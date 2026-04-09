@@ -13,7 +13,6 @@ enum PhotoPermissionStatus {
 enum SplitAction {
     case keepJPG
     case keepRAW
-    case split
 }
 
 enum SplitError: LocalizedError {
@@ -434,12 +433,6 @@ final class PhotoLibraryManager {
 
         case .keepRAW:
             let rawData = try await extractResourceData(for: pair.rawResource)
-            try await saveAsNewAsset(data: rawData, resourceType: .photo, originalFilename: pair.rawResource.originalFilename)
-
-        case .split:
-            let jpgData = try await extractResourceData(for: jpgResource)
-            let rawData = try await extractResourceData(for: pair.rawResource)
-            try await saveAsNewAsset(data: jpgData, resourceType: .photo, originalFilename: jpgResource.originalFilename)
             try await saveAsNewAsset(data: rawData, resourceType: .photo, originalFilename: pair.rawResource.originalFilename)
         }
     }

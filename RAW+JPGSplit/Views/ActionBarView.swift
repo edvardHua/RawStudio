@@ -3,12 +3,11 @@ import SwiftUI
 struct ActionBarView: View {
     var onKeepJPG: (() -> Void)?
     var onKeepRAW: (() -> Void)?
-    var onSplit: (() -> Void)?
     var onExportHDR: (() -> Void)?
     var onExportUltraHDR: (() -> Void)?
 
     private var hasBasicActions: Bool {
-        onKeepJPG != nil || onKeepRAW != nil || onSplit != nil
+        onKeepJPG != nil || onKeepRAW != nil
     }
 
     var body: some View {
@@ -19,10 +18,6 @@ struct ActionBarView: View {
             if let onKeepRAW {
                 if onKeepJPG != nil { divider }
                 actionButton(title: "Keep RAW", icon: "camera.filters", action: onKeepRAW)
-            }
-            if let onSplit {
-                if onKeepJPG != nil || onKeepRAW != nil { divider }
-                actionButton(title: "Split", icon: "rectangle.split.2x1", action: onSplit)
             }
 
             if hasBasicActions {
@@ -95,7 +90,6 @@ struct ActionBarView: View {
         ActionBarView(
             onKeepJPG: {},
             onKeepRAW: {},
-            onSplit: {},
             onExportHDR: {},
             onExportUltraHDR: {}
         )

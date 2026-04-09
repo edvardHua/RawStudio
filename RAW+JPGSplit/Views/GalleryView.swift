@@ -131,7 +131,6 @@ struct GalleryView: View {
                         ActionBarView(
                             onKeepJPG: { confirmBatch(.keepJPG) },
                             onKeepRAW: { confirmBatch(.keepRAW) },
-                            onSplit: { confirmBatch(.split) },
                             onExportHDR: { confirmBatchHDR("adaptiveHDR") },
                             onExportUltraHDR: { confirmBatchHDR("ultraHDR") }
                         )
@@ -341,7 +340,6 @@ struct GalleryView: View {
         switch action {
         case .keepJPG: actionLine = String(localized: "Keep JPG for \(count) photos")
         case .keepRAW: actionLine = String(localized: "Keep RAW for \(count) photos")
-        case .split: actionLine = String(localized: "Split \(count) photos")
         }
         return actionLine
     }
