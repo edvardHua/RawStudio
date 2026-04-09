@@ -85,11 +85,16 @@ struct JPGEditorView: View {
             ZStack {
                 Color(.systemBackground).ignoresSafeArea()
 
-                VStack(spacing: 0) {
-                    previewArea
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                GeometryReader { geo in
+                    VStack(spacing: 0) {
+                        // Preview area — fills remaining space
+                        previewArea
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                    editorControls
+                        // Controls area — proportional height
+                        editorControls
+                            .frame(height: geo.size.height * 0.4)
+                    }
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -158,25 +163,28 @@ struct JPGEditorView: View {
         }
     }
 
-    // MARK: - Controls
+    // MARK: - Editor Controls
 
     private var editorControls: some View {
         VStack(spacing: 0) {
-            // Layer selector
-            LayerSelectorView(selectedLayer: $selectedLayer, segmentation: segmentation)
-                .padding(.top, 8)
-                .padding(.bottom, 4)
+            // Row 1: Format badge + Layer selector (one line)
+            HStack {
+                EditorFormatBadge(format: "JPG")
+                LayerSelectorView(selectedLayer: $selectedLayer, segmentation: segmentation)
+            }
+            .padding(.vertical, 8)
 
             if selectedLayer == .global {
-                // Global JPG editing
-                controlsToolbar
-                    .padding(.horizontal, 16)
-                    .padding(.top, 4)
-                    .padding(.bottom, 6)
+                // Row 2: Tab bar (glass capsules)
+                EditorTabBar(
+                    tabs: EditorTab.allCases,
+                    selected: $selectedTab,
+                    label: { $0.label },
+                    icon: { $0.icon }
+                )
+                .padding(.bottom, 8)
 
-                tabSelector
-                    .padding(.bottom, 8)
-
+                // Row 3: ScrollView with sliders
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: 14) {
                         tabContent
@@ -184,33 +192,46 @@ struct JPGEditorView: View {
                     .padding(.horizontal, 16)
                     .padding(.bottom, 20)
                 }
-                .frame(height: 200)
+
+                // Row 4: EditorToolbar (Reset/Presets/Save)
+                EditorToolbar(
+                    isModified: params.isModified,
+                    onReset: { params.reset() },
+                    onPresets: { showPresetPicker = true },
+                    onSave: { showSavePreset = true }
+                )
             } else {
-                // Layer editing: 5 common params
+                // Row 2: ScrollView with LayerParamsView
+                ScrollView(.vertical, showsIndicators: false) {
+                    jpgLayerParamsContent
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 20)
+                }
+
+                // Row 3: Layer reset button (glass capsule, left-aligned)
                 HStack {
                     Button {
                         var p = layerEdits.params(for: selectedLayer)
                         p.reset()
                         layerEdits.setParams(p, for: selectedLayer)
                     } label: {
-                        Label("Reset", systemImage: "arrow.counterclockwise")
-                            .font(.caption)
+                        HStack(spacing: 5) {
+                            Image(systemName: "arrow.counterclockwise")
+                                .font(.caption2)
+                            Text("Reset")
+                                .font(.caption.weight(.medium))
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(.ultraThinMaterial, in: Capsule())
                     }
-                    .disabled(!layerEdits.params(for: selectedLayer).isModified)
                     .buttonStyle(.plain)
-                    .foregroundStyle(.white)
+                    .opacity(layerEdits.params(for: selectedLayer).isModified ? 1 : 0.4)
+                    .disabled(!layerEdits.params(for: selectedLayer).isModified)
                     Spacer()
                 }
                 .padding(.horizontal, 16)
-                .padding(.top, 4)
-                .padding(.bottom, 6)
-
-                ScrollView(.vertical, showsIndicators: false) {
-                    jpgLayerParamsContent
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 20)
-                }
-                .frame(height: 220)
+                .padding(.vertical, 8)
             }
         }
         .background(.ultraThinMaterial)
@@ -225,118 +246,25 @@ struct JPGEditorView: View {
         LayerParamsView(params: binding)
     }
 
-    private var controlsToolbar: some View {
-        HStack {
-            Button {
-                params.reset()
-            } label: {
-                Label("Reset", systemImage: "arrow.counterclockwise")
-                    .font(.caption)
-            }
-            .disabled(!params.isModified)
-
-            Spacer()
-
-            Button {
-                showPresetPicker = true
-            } label: {
-                Label("Presets", systemImage: "slider.horizontal.below.square.filled.and.square")
-                    .font(.caption)
-            }
-
-            Spacer()
-
-            Button {
-                showSavePreset = true
-            } label: {
-                Label("Save", systemImage: "square.and.arrow.down")
-                    .font(.caption)
-            }
-            .disabled(!params.isModified)
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(.white)
-    }
-
-    private var tabSelector: some View {
-        HStack(spacing: 0) {
-            ForEach(EditorTab.allCases, id: \.self) { tab in
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        selectedTab = tab
-                    }
-                } label: {
-                    VStack(spacing: 3) {
-                        Image(systemName: tab.icon)
-                            .font(.system(size: 16))
-                        Text(tab.label)
-                            .font(.system(size: 10))
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
-                    .foregroundStyle(selectedTab == tab ? .white : .white.opacity(0.5))
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.horizontal, 8)
-    }
-
     @ViewBuilder
     private var tabContent: some View {
         switch selectedTab {
         case .exposure:
-            paramSlider(label: "Exposure", value: $params.exposure, range: -3.0...3.0, defaultValue: 0.0)
-            paramSlider(label: "Brightness", value: $params.brightness, range: -0.5...0.5, defaultValue: 0.0)
-            paramSlider(label: "Contrast", value: $params.contrast, range: 0.5...2.0, defaultValue: 1.0)
-            paramSlider(label: "Highlights", value: $params.highlights, range: 0...2.0, defaultValue: 1.0)
-            paramSlider(label: "Shadows", value: $params.shadows, range: -1.0...1.0, defaultValue: 0.0)
+            EditorSlider(label: "Exposure", value: $params.exposure, range: -3.0...3.0, defaultValue: 0.0)
+            EditorSlider(label: "Brightness", value: $params.brightness, range: -0.5...0.5, defaultValue: 0.0)
+            EditorSlider(label: "Contrast", value: $params.contrast, range: 0.5...2.0, defaultValue: 1.0)
+            EditorSlider(label: "Highlights", value: $params.highlights, range: 0...2.0, defaultValue: 1.0)
+            EditorSlider(label: "Shadows", value: $params.shadows, range: -1.0...1.0, defaultValue: 0.0)
 
         case .color:
-            paramSlider(label: "Temperature", value: $params.warmth, range: 2000...10000, defaultValue: 6500)
-            paramSlider(label: "Tint", value: $params.tint, range: -150...150, defaultValue: 0.0)
-            paramSlider(label: "Saturation", value: $params.saturation, range: 0...2.0, defaultValue: 1.0)
-            paramSlider(label: "Vibrance", value: $params.vibrance, range: -1.0...1.0, defaultValue: 0.0)
+            EditorSlider(label: "Temperature", value: $params.warmth, range: 2000...10000, defaultValue: 6500)
+            EditorSlider(label: "Tint", value: $params.tint, range: -150...150, defaultValue: 0.0)
+            EditorSlider(label: "Saturation", value: $params.saturation, range: 0...2.0, defaultValue: 1.0)
+            EditorSlider(label: "Vibrance", value: $params.vibrance, range: -1.0...1.0, defaultValue: 0.0)
 
         case .detail:
-            paramSlider(label: "Sharpness", value: $params.sharpness, range: 0...2.0, defaultValue: 0.0)
+            EditorSlider(label: "Sharpness", value: $params.sharpness, range: 0...2.0, defaultValue: 0.0)
         }
-    }
-
-    private func paramSlider(label: String, value: Binding<Float>, range: ClosedRange<Float>, defaultValue: Float) -> some View {
-        VStack(spacing: 4) {
-            HStack {
-                Text(LocalizedStringKey(label))
-                    .font(.caption)
-                    .foregroundStyle(.white.opacity(0.7))
-                Spacer()
-                Text(formatValue(value.wrappedValue, range: range))
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.5))
-            }
-
-            HStack(spacing: 10) {
-                Slider(value: value, in: range)
-                    .tint(.white)
-
-                Button {
-                    value.wrappedValue = defaultValue
-                } label: {
-                    Image(systemName: "arrow.counterclockwise")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.white.opacity(0.4))
-                }
-                .buttonStyle(.plain)
-                .opacity(value.wrappedValue != defaultValue ? 1 : 0)
-            }
-        }
-    }
-
-    private func formatValue(_ value: Float, range: ClosedRange<Float>) -> String {
-        if range.upperBound >= 1000 {
-            return String(format: "%.0f", value)
-        }
-        return String(format: "%.2f", value)
     }
 
     // MARK: - Rendering
@@ -354,7 +282,7 @@ struct JPGEditorView: View {
         isRendering = true
         defer { isRendering = false }
 
-        var output = Self.applyParams(params, to: source)
+        let output = Self.applyParams(params, to: source)
 
         // Scale down for preview
         let scale: CGFloat = 0.25
