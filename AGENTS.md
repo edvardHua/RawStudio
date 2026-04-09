@@ -42,7 +42,8 @@ RAW+JPGSplit/
 │   ├── PhotoLibraryManager.swift      # Core service: fetch, thumbnail, export, operations
 │   ├── RAWEditPresetStore.swift       # Unified persistence for all edit params and named presets
 │   ├── UltraHDRWriter.swift           # Ultra HDR JPEG encoder (MPF + gain map)
-│   └── SegmentationService.swift      # Vision framework segmentation + skin detection (@Observable)
+│   ├── SegmentationService.swift      # Vision framework segmentation + skin detection (@Observable)
+│   └── CustomMaskStore.swift          # Custom mask persistence (grayscale PNG in documents dir)
 ├── Views/
 │   ├── GalleryView.swift              # Main list/grid with source filter, batch selection, album picker
 │   ├── PhotoCardView.swift            # List item cell
@@ -55,6 +56,7 @@ RAW+JPGSplit/
 │   ├── RAWPresetPickerView.swift      # RAW preset selection sheet
 │   ├── JPGPresetPickerView.swift      # JPG preset selection sheet
 │   ├── LayerSelectorView.swift        # Layer selector (glass capsules) + LayerParamsView
+│   ├── MaskPainterView.swift          # Full-screen custom mask painting (brush/wand/eraser)
 │   ├── ActionBarView.swift            # Bottom action buttons (keep/split/HDR)
 │   ├── BatchProgressView.swift        # Batch operation overlay
 │   ├── ToastView.swift                # Lightweight top toast (with optional undo)
@@ -139,7 +141,7 @@ Uses `CIContext.writeHEIFRepresentation(of: sdrImage, options: [.hdrImage: hdrIm
 - **Presets**: Save named presets, load from preset picker, delete
 - **Per-asset persistence**: Edit params saved via RAWEditPresetStore
 - **Applied on export**: HDR exports use saved edit params
-- **Layer editing**: 5 layers (Global / Person / Skin / Foreground / Background) with per-layer adjustments
+- **Layer editing**: 5 auto layers (Global / Person / Skin / Foreground / Background) + up to 3 custom layers with per-layer adjustments
 
 ### JPG Editor
 - **10 parameters** in 3 tabs: Exposure / Color / Detail
@@ -147,7 +149,7 @@ Uses `CIContext.writeHEIFRepresentation(of: sdrImage, options: [.hdrImage: hdrIm
 - **Presets**: Save/load named presets (separate from RAW presets)
 - **Per-asset persistence**: Edit params saved via RAWEditPresetStore
 - **EXIF orientation handling**: Applies orientation transform before processing to prevent rotation
-- **Layer editing**: Same 5 layers as RAW editor
+- **Layer editing**: Same 5 auto layers + 3 custom layers as RAW editor
 
 ### Layer Editing (Both Editors)
 - **5 layer types**: Global (full image), Person (VNGeneratePersonSegmentationRequest), Skin (person mask + YCbCr color detection), Foreground (VNGenerateForegroundInstanceMaskRequest), Background (inverted foreground)
@@ -155,6 +157,14 @@ Uses `CIContext.writeHEIFRepresentation(of: sdrImage, options: [.hdrImage: hdrIm
 - **Mask generation**: On editor open, masks generated in background. For RAW, uses pre-rendered UIImage from CompareView (avoids CIRAWFilter HDR format issues with Vision).
 - **Rendering pipeline**: Global edits → for each layer with modifications, apply CIFilter chain through CIBlendWithMask compositing
 - **Layer edits persisted** per asset via RAWEditPresetStore
+- **Custom layers**: Up to 3 user-defined mask layers via MaskPainterView
+  - **Brush tool**: finger painting to add selection, adjustable size (4-100px)
+  - **Magic wand tool**: tap to auto-select similar color regions (flood fill), adjustable tolerance
+  - **Eraser tool**: finger painting to remove selection
+  - **Mask visualization**: semi-transparent red overlay on selected regions
+  - **Undo/redo**: mask history stack (up to 20 steps)
+  - **Persistence**: masks stored as grayscale PNG in app documents directory via CustomMaskStore
+  - **UI**: "+" button in layer selector to add, long-press for edit/delete menu, purple accent for custom layers
 
 ### Localization
 - English (source) + Simplified Chinese (zh-Hans)
