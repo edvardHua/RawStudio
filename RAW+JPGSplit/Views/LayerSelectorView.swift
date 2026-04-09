@@ -105,6 +105,7 @@ struct LayerParamsView: View {
 
     var body: some View {
         VStack(spacing: 14) {
+            EditorSlider(label: "Edge Feather", value: $params.edgeFeather, range: 0...30, defaultValue: 6.0)
             EditorSlider(label: "Exposure", value: $params.exposure, range: -3.0...3.0, defaultValue: 0.0)
             EditorSlider(label: "Brightness", value: $params.brightness, range: -0.5...0.5, defaultValue: 0.0)
             EditorSlider(label: "Contrast", value: $params.contrast, range: 0.5...2.0, defaultValue: 1.0)

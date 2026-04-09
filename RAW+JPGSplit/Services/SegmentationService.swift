@@ -356,10 +356,22 @@ final class SegmentationService {
             if let output = filter.outputImage { edited = output }
         }
 
+        // Apply edge feather (Gaussian blur) to mask for smooth transitions
+        let featheredMask: CIImage
+        if params.edgeFeather > 0 {
+            featheredMask = mask
+                .applyingFilter("CIGaussianBlur", parameters: [
+                    "inputRadius": NSNumber(value: params.edgeFeather)
+                ])
+                .cropped(to: mask.extent)
+        } else {
+            featheredMask = mask
+        }
+
         let blend = CIFilter.blendWithMask()
         blend.inputImage = edited
         blend.backgroundImage = image
-        blend.maskImage = mask
+        blend.maskImage = featheredMask
 
         return blend.outputImage ?? image
     }

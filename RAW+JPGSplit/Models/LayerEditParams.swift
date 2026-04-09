@@ -63,6 +63,7 @@ enum LayerType: String, Codable, CaseIterable, Identifiable {
 
 /// Per-layer adjustments using CIFilter chain (5 common parameters)
 struct LayerEditParams: Codable, Equatable {
+    var edgeFeather: Float = 6.0    // 0 ~ 30, edge transition blur radius
     var exposure: Float = 0.0       // -3.0 ~ +3.0
     var brightness: Float = 0.0     // -0.5 ~ +0.5
     var contrast: Float = 1.0       // 0.5 ~ 2.0

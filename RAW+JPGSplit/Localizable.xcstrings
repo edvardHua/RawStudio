@@ -330,22 +330,22 @@
         }
       }
     },
-    "Error" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "错误"
-          }
-        }
-      }
-    },
     "Eraser" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "橡皮擦"
+          }
+        }
+      }
+    },
+    "Error" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "错误"
           }
         }
       }
@@ -1053,22 +1053,23 @@
         }
       }
     },
+    "Size" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "大小"
+          }
+        }
+      }
+    },
     "Skin" : {
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "皮肤"
-          }
-        }
-      }
-    },
-    "Size" : {
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "大小"
           }
         }
       }
@@ -1181,6 +1182,7 @@
       }
     },
     "Tolerance" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -1280,6 +1282,13 @@
             "state" : "translated",
             "value" : "魔棒"
           }
+        }
+      }
+    },
+    "Edge Feather" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : { "state" : "translated", "value" : "边缘过渡" }
         }
       }
     }
