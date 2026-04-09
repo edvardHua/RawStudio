@@ -90,7 +90,20 @@ struct GalleryView: View {
                 .pickerStyle(.segmented)
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
-                .background(.bar)
+                .background(
+                    ZStack {
+                        Rectangle()
+                            .fill(.ultraThinMaterial)
+                            .mask(
+                                LinearGradient(
+                                    colors: [.white, .white, .white.opacity(0)],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                )
+                            )
+                    }
+                    .ignoresSafeArea()
+                )
             }
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
@@ -177,45 +190,62 @@ struct GalleryView: View {
         }
     }
 
-    // MARK: - Bottom Toolbar
+    // MARK: - Bottom Toolbar (Liquid Glass Style)
 
     private var galleryBottomBar: some View {
-        HStack(spacing: 0) {
-            Button {
-                showAlbumPicker = true
-            } label: {
-                VStack(spacing: 5) {
-                    Image(systemName: "folder")
-                        .font(.title2)
-                    Text(manager.selectedAlbum?.title ?? String(localized: "Albums"))
-                        .font(.footnote)
-                        .lineLimit(1)
-                }
-                .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.plain)
+        ZStack {
+            // Gradient blur background (bottom to top fade)
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .mask(
+                    LinearGradient(
+                        colors: [.white, .white, .white.opacity(0)],
+                        startPoint: .bottom,
+                        endPoint: .top
+                    )
+                )
+                .frame(height: 100)
+                .ignoresSafeArea()
 
-            Divider()
-                .frame(height: 34)
+            // Capsule buttons
+            HStack(spacing: 12) {
+                // Albums capsule
+                Button {
+                    showAlbumPicker = true
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "folder")
+                            .font(.system(size: 16, weight: .medium))
+                        Text(manager.selectedAlbum?.title ?? String(localized: "Albums"))
+                            .font(.system(size: 14, weight: .medium))
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(.ultraThinMaterial, in: Capsule())
+                }
+                .buttonStyle(.plain)
 
-            Button {
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    layout = layout == .list ? .grid : .list
+                // Layout toggle capsule
+                Button {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        layout = layout == .list ? .grid : .list
+                    }
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: layout == .list ? "square.grid.3x3" : "list.bullet")
+                            .font(.system(size: 16, weight: .medium))
+                        Text(layout == .list ? String(localized: "Grid View") : String(localized: "List View"))
+                            .font(.system(size: 14, weight: .medium))
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(.ultraThinMaterial, in: Capsule())
                 }
-            } label: {
-                VStack(spacing: 5) {
-                    Image(systemName: layout == .list ? "square.grid.3x3" : "list.bullet")
-                        .font(.title2)
-                    Text(layout == .list ? String(localized: "Grid View") : String(localized: "List View"))
-                        .font(.footnote)
-                }
-                .frame(maxWidth: .infinity)
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
+            .padding(.bottom, 4)
         }
-        .padding(.vertical, 12)
-        .padding(.horizontal, 8)
-        .background(.ultraThinMaterial)
     }
 
     // MARK: - List Layout
@@ -247,7 +277,7 @@ struct GalleryView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 6)
-                            .background(.bar)
+                            .background(.ultraThinMaterial)
                     }
                 }
 
@@ -283,7 +313,7 @@ struct GalleryView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 6)
-                            .background(.bar)
+                            .background(.ultraThinMaterial)
                     }
                 }
 
