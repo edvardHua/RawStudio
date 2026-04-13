@@ -26,6 +26,8 @@ struct RAWEditorView: View {
     @State private var activeCustomLayers: [LayerType] = []
     @State private var showMaskPainter = false
     @State private var editingMaskLayer: LayerType?
+    @State private var cachedRawFilter: CIRAWFilter?
+    @State private var renderTask: Task<Void, Never>?
     @Environment(\.dismiss) private var dismiss
 
     private let ciContext = CIContext(options: [.useSoftwareRenderer: false])
@@ -100,15 +102,16 @@ struct RAWEditorView: View {
                 }
             }
             .task {
+                cachedRawFilter = CIRAWFilter(imageData: rawData, identifierHint: resourceHint)
                 await generateMasks()
                 loadCustomMasks()
                 await renderPreview()
             }
             .onChange(of: params) { _, _ in
-                Task { await renderPreview() }
+                debounceRender()
             }
             .onChange(of: layerEdits) { _, _ in
-                Task { await renderPreview() }
+                debounceRender()
             }
             .sheet(isPresented: $showPresetPicker) {
                 RAWPresetPickerView(
@@ -133,8 +136,7 @@ struct RAWEditorView: View {
             }
             .fullScreenCover(isPresented: $showMaskPainter) {
                 if let layer = editingMaskLayer {
-                    let img = previewImage ?? UIImage()
-                    // Load existing mask from store (fast PNG decode, no CIContext)
+                    let img = Self.prepareImageForMaskPainter(previewImage)
                     let existingMask: CGImage? = customMaskStore.loadMask(for: assetID, layer: layer)
                         .flatMap { ciImage in
                             let ctx = CIContext()
@@ -294,24 +296,13 @@ struct RAWEditorView: View {
 
     // MARK: - Rendering
 
-    private func generateMasks() async {
-        isMaskLoading = true
-        defer { isMaskLoading = false }
-
-        // Use pre-rendered UIImage from CompareView (standard sRGB CGImage)
-        // This avoids CIRAWFilter output issues (non-zero extent, HDR color space)
-        if let cgImage = previewImageForMask?.cgImage {
-            let ciImage = CIImage(cgImage: cgImage)
-            await segmentation.generateMasks(for: ciImage, identifier: assetID)
-            return
+    private func debounceRender() {
+        renderTask?.cancel()
+        renderTask = Task {
+            try? await Task.sleep(for: .milliseconds(30))
+            guard !Task.isCancelled else { return }
+            await renderPreview()
         }
-
-        // Fallback: render via CIRAWFilter (may not work for all formats)
-        guard let rawFilter = CIRAWFilter(imageData: rawData, identifierHint: resourceHint) else { return }
-        rawFilter.isDraftModeEnabled = true
-        rawFilter.scaleFactor = 0.5
-        guard let image = rawFilter.outputImage else { return }
-        await segmentation.generateMasks(for: image, identifier: assetID)
     }
 
     private func renderPreview() async {
@@ -319,9 +310,9 @@ struct RAWEditorView: View {
         isRendering = true
         defer { isRendering = false }
 
-        guard let rawFilter = CIRAWFilter(imageData: rawData, identifierHint: resourceHint) else { return }
+        guard let rawFilter = cachedRawFilter else { return }
 
-        // Apply global params
+        // Apply global params (reuse cached filter — no RAW re-parsing)
         applyParams(params, to: rawFilter)
 
         // Draft mode for fast preview
@@ -340,30 +331,33 @@ struct RAWEditorView: View {
             }
         }
 
-        // Render to UIImage — force decode pixels into memory immediately
-        // to prevent CIContext lazy rendering when CALayer accesses the data later
+        // Render to UIImage (no forceDecod for real-time preview — SwiftUI Image handles lazy CGImage fine)
         let extent = outputImage.extent
         guard let cgImage = ciContext.createCGImage(outputImage, from: extent) else { return }
-        let decoded = Self.forceDecodeCGImage(cgImage)
-        let uiImage = UIImage(cgImage: decoded)
+        let uiImage = UIImage(cgImage: cgImage)
 
         await MainActor.run {
             previewImage = uiImage
         }
     }
 
-    /// Force a CGImage's pixel data into CPU memory (prevents CIContext lazy rendering)
-    nonisolated private static func forceDecodeCGImage(_ cgImage: CGImage) -> CGImage {
-        let w = cgImage.width
-        let h = cgImage.height
-        guard let ctx = CGContext(
-            data: nil, width: w, height: h,
-            bitsPerComponent: 8, bytesPerRow: w * 4,
-            space: CGColorSpace(name: CGColorSpace.sRGB)!,
-            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
-        ) else { return cgImage }
-        ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: w, height: h))
-        return ctx.makeImage() ?? cgImage
+    private func generateMasks() async {
+        isMaskLoading = true
+        defer { isMaskLoading = false }
+
+        // Use pre-rendered UIImage from CompareView (standard sRGB CGImage)
+        if let cgImage = previewImageForMask?.cgImage {
+            let ciImage = CIImage(cgImage: cgImage)
+            await segmentation.generateMasks(for: ciImage, identifier: assetID)
+            return
+        }
+
+        // Fallback: render via CIRAWFilter (may not work for all formats)
+        guard let rawFilter = CIRAWFilter(imageData: rawData, identifierHint: resourceHint) else { return }
+        rawFilter.isDraftModeEnabled = true
+        rawFilter.scaleFactor = 0.5
+        guard let image = rawFilter.outputImage else { return }
+        await segmentation.generateMasks(for: image, identifier: assetID)
     }
 
     static func applyParams(_ params: RAWEditParams, to filter: CIRAWFilter) {
@@ -407,6 +401,26 @@ struct RAWEditorView: View {
 
     private func applyParams(_ params: RAWEditParams, to filter: CIRAWFilter) {
         Self.applyParams(params, to: filter)
+    }
+
+    /// Prepare a force-decoded UIImage for MaskPainterView's CALayer
+    nonisolated private static func prepareImageForMaskPainter(_ preview: UIImage?) -> UIImage {
+        guard let preview, let cg = preview.cgImage else { return UIImage() }
+        return UIImage(cgImage: forceDecodeCGImage(cg))
+    }
+
+    /// Force a CGImage's pixel data into CPU memory (prevents CIContext lazy rendering)
+    nonisolated private static func forceDecodeCGImage(_ cgImage: CGImage) -> CGImage {
+        let w = cgImage.width
+        let h = cgImage.height
+        guard let ctx = CGContext(
+            data: nil, width: w, height: h,
+            bitsPerComponent: 8, bytesPerRow: w * 4,
+            space: CGColorSpace(name: CGColorSpace.sRGB)!,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return cgImage }
+        ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: w, height: h))
+        return ctx.makeImage() ?? cgImage
     }
 
     // MARK: - Custom Layer Management

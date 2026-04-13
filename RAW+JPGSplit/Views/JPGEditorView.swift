@@ -22,6 +22,7 @@ struct JPGEditorView: View {
     @State private var activeCustomLayers: [LayerType] = []
     @State private var showMaskPainter = false
     @State private var editingMaskLayer: LayerType?
+    @State private var renderTask: Task<Void, Never>?
     @Environment(\.dismiss) private var dismiss
 
     private let ciContext = CIContext(options: [.useSoftwareRenderer: false])
@@ -122,10 +123,10 @@ struct JPGEditorView: View {
                 await renderPreview()
             }
             .onChange(of: params) { _, _ in
-                Task { await renderPreview() }
+                debounceRender()
             }
             .onChange(of: layerEdits) { _, _ in
-                Task { await renderPreview() }
+                debounceRender()
             }
             .sheet(isPresented: $showPresetPicker) {
                 JPGPresetPickerView(
@@ -150,7 +151,7 @@ struct JPGEditorView: View {
             }
             .fullScreenCover(isPresented: $showMaskPainter) {
                 if let layer = editingMaskLayer {
-                    let img = previewImage ?? UIImage()
+                    let img = Self.prepareImageForMaskPainter(previewImage)
                     let existingMask: CGImage? = customMaskStore.loadMask(for: assetID, layer: layer)
                         .flatMap { ciImage in
                             let ctx = CIContext()
@@ -311,6 +312,15 @@ struct JPGEditorView: View {
         await segmentation.generateMasks(for: scaled, identifier: assetID)
     }
 
+    private func debounceRender() {
+        renderTask?.cancel()
+        renderTask = Task {
+            try? await Task.sleep(for: .milliseconds(30))
+            guard !Task.isCancelled else { return }
+            await renderPreview()
+        }
+    }
+
     private func renderPreview() async {
         guard !isRendering, let source = sourceImage else { return }
         isRendering = true
@@ -333,15 +343,20 @@ struct JPGEditorView: View {
         }
 
         guard let cgImage = ciContext.createCGImage(scaled, from: scaled.extent) else { return }
-        let decoded = Self.forceDecodeCGImage(cgImage)
-        let uiImage = UIImage(cgImage: decoded)
+        let uiImage = UIImage(cgImage: cgImage)
 
         await MainActor.run {
             previewImage = uiImage
         }
     }
 
-    /// Force a CGImage's pixel data into CPU memory (prevents CIContext lazy rendering)
+    /// Prepare a force-decoded UIImage for MaskPainterView's CALayer
+    nonisolated private static func prepareImageForMaskPainter(_ preview: UIImage?) -> UIImage {
+        guard let preview, let cg = preview.cgImage else { return UIImage() }
+        return UIImage(cgImage: forceDecodeCGImage(cg))
+    }
+
+    /// Force a CGImage's pixel data into CPU memory (for MaskPainterView only)
     nonisolated private static func forceDecodeCGImage(_ cgImage: CGImage) -> CGImage {
         let w = cgImage.width
         let h = cgImage.height
