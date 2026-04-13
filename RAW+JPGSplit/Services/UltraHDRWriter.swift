@@ -36,7 +36,8 @@ final class UltraHDRWriter {
         sdrImage: CIImage,
         hdrImage: CIImage,
         jpegQuality: Float = 0.92,
-        gainMapScale: Int = 2
+        gainMapScale: Int = 2,
+        exifProperties: [String: Any]? = nil
     ) throws -> Data {
         let width = Int(sdrImage.extent.width)
         let height = Int(sdrImage.extent.height)
@@ -59,13 +60,14 @@ final class UltraHDRWriter {
             gmHeight: gmHeight
         )
 
-        // 4. Compress SDR as JPEG
+        // 4. Compress SDR as JPEG (with EXIF metadata)
         let sdrJPEGData = try compressJPEG(
             pixels: sdrPixels,
             width: width,
             height: height,
             quality: jpegQuality,
-            colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!
+            colorSpace: CGColorSpace(name: CGColorSpace.sRGB)!,
+            properties: exifProperties
         )
 
         // 5. Compress gain map as grayscale JPEG
@@ -244,7 +246,7 @@ final class UltraHDRWriter {
 
     // MARK: - JPEG Compression
 
-    private func compressJPEG(pixels: Data, width: Int, height: Int, quality: Float, colorSpace: CGColorSpace) throws -> Data {
+    private func compressJPEG(pixels: Data, width: Int, height: Int, quality: Float, colorSpace: CGColorSpace, properties: [String: Any]? = nil) throws -> Data {
         let bytesPerRow = width * 4
         let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue)
 
@@ -270,7 +272,13 @@ final class UltraHDRWriter {
             throw UltraHDRError.renderFailed("Cannot create JPEG destination")
         }
 
-        let options: [CFString: Any] = [kCGImageDestinationLossyCompressionQuality: quality]
+        var options: [CFString: Any] = [kCGImageDestinationLossyCompressionQuality: quality]
+        // Inject EXIF/TIFF/GPS metadata from original image
+        if let properties {
+            for (key, value) in properties {
+                options[key as CFString] = value
+            }
+        }
         CGImageDestinationAddImage(destination, cgImage, options as CFDictionary)
 
         guard CGImageDestinationFinalize(destination) else {

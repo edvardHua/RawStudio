@@ -191,7 +191,7 @@ final class PhotoLibraryManager {
                         if resource.type == .alternatePhoto {
                             rawResource = resource
                         } else if resource.type == .photo {
-                            if isRAWType(resource.uniformTypeIdentifier) {
+                            if Self.isRAWType(resource.uniformTypeIdentifier) {
                                 rawResource = resource
                             } else {
                                 jpgResource = resource
@@ -326,7 +326,7 @@ final class PhotoLibraryManager {
 
     // MARK: - Core Operations
 
-    /// Export Adaptive HDR HEIF from RAW data
+    /// Export Adaptive HDR HEIF from RAW data, preserving original EXIF metadata
     func exportAdaptiveHDR(for pair: PhotoPair, editParams: RAWEditParams = RAWEditParams()) async throws {
         let rawData = try await extractResourceData(for: pair.rawResource)
 
@@ -368,19 +368,21 @@ final class PhotoLibraryManager {
             options: [.hdrImage: hdrImage]
         )
 
-        // Read the HEIF data and save to photo library
-        let heifData = try Data(contentsOf: tempURL)
+        // Inject EXIF metadata from original RAW into the HEIF file
+        let exifProperties = Self.extractImageProperties(from: rawData)
+        let rawHeifData = try Data(contentsOf: tempURL)
+        let finalData = Self.injectMetadata(into: tempURL, properties: exifProperties) ?? rawHeifData
         try? FileManager.default.removeItem(at: tempURL)
 
         try await saveAsNewAsset(
-            data: heifData,
+            data: finalData,
             resourceType: .photo,
             originalFilename: (pair.rawResource.originalFilename as NSString)
                 .deletingPathExtension + "_HDR.heic"
         )
     }
 
-    /// Export Ultra HDR JPEG (MPF format with gain map) from RAW data
+    /// Export Ultra HDR JPEG (MPF format with gain map) from RAW data, preserving original EXIF metadata
     func exportUltraHDRJPEG(for pair: PhotoPair, editParams: RAWEditParams = RAWEditParams()) async throws {
         let rawData = try await extractResourceData(for: pair.rawResource)
 
@@ -405,9 +407,16 @@ final class PhotoLibraryManager {
             throw SplitError.extractionFailed("Cannot render HDR image from RAW")
         }
 
-        // Generate Ultra HDR JPEG
+        // Extract EXIF from original RAW
+        let exifProperties = Self.extractImageProperties(from: rawData)
+
+        // Generate Ultra HDR JPEG with EXIF
         let writer = UltraHDRWriter(ciContext: ciContext)
-        let ultraHDRData = try writer.writeUltraHDRJPEG(sdrImage: sdrImage, hdrImage: hdrImage)
+        let ultraHDRData = try writer.writeUltraHDRJPEG(
+            sdrImage: sdrImage,
+            hdrImage: hdrImage,
+            exifProperties: exifProperties
+        )
 
         // Save to photo library
         try await saveAsNewAsset(
@@ -464,46 +473,58 @@ final class PhotoLibraryManager {
         return (batchSuccessCount, batchFailCount)
     }
 
+    // MARK: - EXIF Metadata
+
+    /// Extract complete image properties (EXIF, TIFF, GPS, etc.) from image data
+    nonisolated static func extractImageProperties(from data: Data) -> [String: Any]? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [String: Any]
+        else { return nil }
+        return properties
+    }
+
+    /// Inject metadata properties into an image file, returns new Data
+    nonisolated static func injectMetadata(into fileURL: URL, properties: [String: Any]?) -> Data? {
+        guard let properties else { return nil }
+        guard let sourceData = try? Data(contentsOf: fileURL),
+              let source = CGImageSourceCreateWithData(sourceData as CFData, nil),
+              let uti = CGImageSourceGetType(source) else { return nil }
+
+        let mutableData = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(mutableData, uti, 1, nil) else { return nil }
+
+        CGImageDestinationAddImageFromSource(destination, source, 0, properties as CFDictionary)
+
+        guard CGImageDestinationFinalize(destination) else { return nil }
+        return mutableData as Data
+    }
+
     // MARK: - Private Helpers
 
     /// Check if a UTI represents a RAW image format
-    private static func isRAWType(_ uti: String) -> Bool {
+    nonisolated private static func isRAWType(_ uti: String) -> Bool {
         let rawUTIs: Set<String> = [
-            "com.adobe.raw-image",          // DNG
-            "com.sony.arw-raw-image",       // ARW
-            "com.canon.cr2-raw-image",      // CR2
-            "com.canon.cr3-raw-image",      // CR3
-            "com.nikon.nrw-raw-image",      // NRW
-            "com.nikon.raw-image",          // NEF
-            "com.fuji.raw-image",           // RAF
-            "com.olympus.raw-image",        // ORF
-            "com.olympus.or-raw-image",     // ORF variant
-            "com.panasonic.raw-image",      // RW2
-            "com.panasonic.rw2-raw-image",  // RW2 variant
-            "com.pentax.raw-image",         // PEF
-            "com.samsung.raw-image",        // SRW
-            "com.leica.raw-image",          // RWL
-            "com.hasselblad.raw-image",     // 3FR
-            "com.hasselblad.fff-raw-image", // FFF
-            "com.apple.proraw",             // Apple ProRAW (old?)
+            "com.adobe.raw-image",
+            "com.sony.arw-raw-image",
+            "com.canon.cr2-raw-image",
+            "com.canon.cr3-raw-image",
+            "com.nikon.nrw-raw-image",
+            "com.nikon.raw-image",
+            "com.fuji.raw-image",
+            "com.olympus.raw-image",
+            "com.olympus.or-raw-image",
+            "com.panasonic.raw-image",
+            "com.panasonic.rw2-raw-image",
+            "com.pentax.raw-image",
+            "com.samsung.raw-image",
+            "com.leica.raw-image",
+            "com.hasselblad.raw-image",
+            "com.hasselblad.fff-raw-image",
         ]
 
         let lowerUTI = uti.lowercased()
-
-        // Direct match
         if rawUTIs.contains(lowerUTI) { return true }
-
-        // Check if it conforms to the generic "com.adobe.raw-image" base type
-        // or contains "raw" in the UTI
         if lowerUTI.contains("raw") { return true }
-
-        // Check by file extension in the UTI
-        if lowerUTI.hasSuffix(".dng") || lowerUTI.hasSuffix(".arw") ||
-           lowerUTI.hasSuffix(".cr2") || lowerUTI.hasSuffix(".cr3") ||
-           lowerUTI.hasSuffix(".nef") || lowerUTI.hasSuffix(".raf") ||
-           lowerUTI.hasSuffix(".orf") || lowerUTI.hasSuffix(".rw2") ||
-           lowerUTI.hasSuffix(".pef") { return true }
-
         return false
     }
 
