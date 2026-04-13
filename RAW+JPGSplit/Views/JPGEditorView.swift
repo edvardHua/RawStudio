@@ -333,11 +333,26 @@ struct JPGEditorView: View {
         }
 
         guard let cgImage = ciContext.createCGImage(scaled, from: scaled.extent) else { return }
-        let uiImage = UIImage(cgImage: cgImage)
+        let decoded = Self.forceDecodeCGImage(cgImage)
+        let uiImage = UIImage(cgImage: decoded)
 
         await MainActor.run {
             previewImage = uiImage
         }
+    }
+
+    /// Force a CGImage's pixel data into CPU memory (prevents CIContext lazy rendering)
+    nonisolated private static func forceDecodeCGImage(_ cgImage: CGImage) -> CGImage {
+        let w = cgImage.width
+        let h = cgImage.height
+        guard let ctx = CGContext(
+            data: nil, width: w, height: h,
+            bitsPerComponent: 8, bytesPerRow: w * 4,
+            space: CGColorSpace(name: CGColorSpace.sRGB)!,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return cgImage }
+        ctx.draw(cgImage, in: CGRect(x: 0, y: 0, width: w, height: h))
+        return ctx.makeImage() ?? cgImage
     }
 
     /// Apply JPG edit params using CIFilter chain
