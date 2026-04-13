@@ -137,6 +137,7 @@ final class MaskCanvasUIView: UIView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
+        guard bounds.size != .zero else { return }
         sourceLayer.frame = bounds
         overlayLayer.frame = bounds
         if let img = sourceImage {
@@ -151,6 +152,7 @@ final class MaskCanvasUIView: UIView {
         self.maskBitmap = bitmap
         self.sourceCGImage = sourceImage.cgImage
         sourceLayer.contents = sourceImage.cgImage
+        setNeedsLayout()
         updateOverlay()
     }
 
@@ -420,6 +422,10 @@ struct MaskCanvasView: UIViewRepresentable {
         uiView.wandTolerance = wandTolerance
         uiView.onStrokeComplete = onStrokeComplete
         uiView.maskBitmap = maskBitmap
+        // Re-configure source image if it changed
+        if uiView.sourceImage !== sourceImage {
+            uiView.configure(sourceImage: sourceImage, bitmap: maskBitmap)
+        }
         uiView.updateOverlay()
     }
 }
