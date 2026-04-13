@@ -153,7 +153,6 @@ final class MaskCanvasUIView: UIView {
         self.sourceCGImage = sourceImage.cgImage
         sourceLayer.contents = sourceImage.cgImage
         setNeedsLayout()
-        updateOverlay()
     }
 
     // MARK: - Coordinate Conversion
@@ -366,7 +365,27 @@ final class MaskCanvasUIView: UIView {
     // MARK: - Overlay
 
     func updateOverlay() {
-        guard let bitmap = maskBitmap, let maskCG = bitmap.toCGImage() else {
+        guard let bitmap = maskBitmap else {
+            overlayLayer.contents = nil
+            return
+        }
+
+        // Fast path: if bitmap is all zeros (empty mask), skip expensive rendering
+        let hasContent = bitmap.data.withUnsafeBytes { ptr -> Bool in
+            guard let base = ptr.baseAddress else { return false }
+            let bytes = base.assumingMemoryBound(to: UInt8.self)
+            for i in 0..<bitmap.data.count {
+                if bytes[i] != 0 { return true }
+            }
+            return false
+        }
+
+        guard hasContent else {
+            overlayLayer.contents = nil
+            return
+        }
+
+        guard let maskCG = bitmap.toCGImage() else {
             overlayLayer.contents = nil
             return
         }

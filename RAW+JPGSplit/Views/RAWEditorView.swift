@@ -134,13 +134,12 @@ struct RAWEditorView: View {
             .fullScreenCover(isPresented: $showMaskPainter) {
                 if let layer = editingMaskLayer {
                     let img = previewImage ?? UIImage()
-                    let existingMask: CGImage? = {
-                        if let ciMask = segmentation.mask(for: layer, imageExtent: CGRect(origin: .zero, size: img.size)) {
+                    // Load existing mask from store (fast PNG decode, no CIContext)
+                    let existingMask: CGImage? = customMaskStore.loadMask(for: assetID, layer: layer)
+                        .flatMap { ciImage in
                             let ctx = CIContext()
-                            return ctx.createCGImage(ciMask, from: ciMask.extent)
+                            return ctx.createCGImage(ciImage, from: ciImage.extent)
                         }
-                        return nil
-                    }()
                     MaskPainterView(sourceImage: img, existingMask: existingMask) { maskCG in
                         customMaskStore.saveMask(maskCG, for: assetID, layer: layer)
                         let ciMask = CIImage(cgImage: maskCG)
