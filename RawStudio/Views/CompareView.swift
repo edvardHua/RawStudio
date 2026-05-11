@@ -3,7 +3,7 @@ import Photos
 
 struct CompareView: View {
     @Bindable var manager: PhotoLibraryManager
-    let pairs: [PhotoPair]
+    @State private var pairs: [PhotoPair]
     let startIndex: Int
     var presetStore: RAWEditPresetStore
 
@@ -39,7 +39,7 @@ struct CompareView: View {
 
     init(manager: PhotoLibraryManager, pairs: [PhotoPair], startIndex: Int, presetStore: RAWEditPresetStore) {
         self.manager = manager
-        self.pairs = pairs
+        self._pairs = State(initialValue: pairs)
         self.startIndex = startIndex
         self.presetStore = presetStore
         self._currentIndex = State(initialValue: startIndex)
@@ -467,10 +467,7 @@ struct CompareView: View {
             isProcessing = false
 
             if success {
-                toastMessage = String(localized: "Original deleted")
-                withAnimation { showToast = true }
-
-                try? await Task.sleep(for: .seconds(1.5))
+                pairs.remove(at: currentIndex)
                 moveToNextOrDismiss()
             }
         }
@@ -522,12 +519,16 @@ struct CompareView: View {
     }
 
     private func moveToNextOrDismiss() {
-        if currentIndex >= pairs.count {
+        if pairs.isEmpty {
             dismiss()
             return
         }
+        // currentIndex now points to the next item (after removal), clamp to last if needed
         let nextIndex = min(currentIndex, pairs.count - 1)
-        navigateTo(nextIndex)
+        if nextIndex != currentIndex {
+            currentIndex = nextIndex
+        }
+        Task { await loadImages() }
     }
 
     private func navigateTo(_ index: Int) {

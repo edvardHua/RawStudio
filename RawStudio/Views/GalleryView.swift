@@ -320,6 +320,7 @@ struct GalleryView: View {
                     .font(.subheadline.weight(.medium))
                 Text(label)
                     .font(.footnote.weight(.medium))
+                    .lineLimit(1)
             }
             .padding(.horizontal, capsulePadH)
             .padding(.vertical, capsulePadV)

@@ -368,8 +368,9 @@ final class PhotoLibraryManager {
             options: [.hdrImage: hdrImage]
         )
 
-        // Inject EXIF metadata from original RAW into the HEIF file
-        let exifProperties = Self.extractImageProperties(from: rawData)
+        // Inject EXIF metadata from original RAW into the HEIF file.
+        // Orientation is reset to "up" because CIRAWFilter already baked the rotation into pixels.
+        let exifProperties = Self.propertiesWithNormalizedOrientation(Self.extractImageProperties(from: rawData))
         let rawHeifData = try Data(contentsOf: tempURL)
         let finalData = Self.injectMetadata(into: tempURL, properties: exifProperties) ?? rawHeifData
         try? FileManager.default.removeItem(at: tempURL)
@@ -407,8 +408,9 @@ final class PhotoLibraryManager {
             throw SplitError.extractionFailed("Cannot render HDR image from RAW")
         }
 
-        // Extract EXIF from original RAW
-        let exifProperties = Self.extractImageProperties(from: rawData)
+        // Extract EXIF from original RAW.
+        // Orientation is reset to "up" because CIRAWFilter already baked the rotation into pixels.
+        let exifProperties = Self.propertiesWithNormalizedOrientation(Self.extractImageProperties(from: rawData))
 
         // Generate Ultra HDR JPEG with EXIF
         let writer = UltraHDRWriter(ciContext: ciContext)
@@ -474,6 +476,19 @@ final class PhotoLibraryManager {
     }
 
     // MARK: - EXIF Metadata
+
+    /// Reset orientation to "up" (1) in a properties dict.
+    /// CIRAWFilter.outputImage already bakes orientation into pixel data, so the EXIF
+    /// orientation tag must be cleared to avoid double-rotation in the exported file.
+    nonisolated static func propertiesWithNormalizedOrientation(_ properties: [String: Any]?) -> [String: Any]? {
+        guard var props = properties else { return nil }
+        props[kCGImagePropertyOrientation as String] = CGImagePropertyOrientation.up.rawValue
+        if var tiff = props[kCGImagePropertyTIFFDictionary as String] as? [String: Any] {
+            tiff[kCGImagePropertyTIFFOrientation as String] = CGImagePropertyOrientation.up.rawValue
+            props[kCGImagePropertyTIFFDictionary as String] = tiff
+        }
+        return props
+    }
 
     /// Extract complete image properties (EXIF, TIFF, GPS, etc.) from image data
     nonisolated static func extractImageProperties(from data: Data) -> [String: Any]? {

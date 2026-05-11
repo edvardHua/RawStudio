@@ -1,6 +1,6 @@
 //
 //  ContentView.swift
-//  RAW+JPGSplit
+//  RawStudio
 //
 //  Created by edvard.zeng on 2026/4/5.
 //

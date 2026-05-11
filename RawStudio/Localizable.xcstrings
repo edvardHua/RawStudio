@@ -751,6 +751,7 @@
       }
     },
     "Original deleted" : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -863,6 +864,7 @@
       }
     },
     "RAW+JPG Split needs full access to your photo library to find and process paired photos." : {
+      "extractionState" : "stale",
       "localizations" : {
         "zh-Hans" : {
           "stringUnit" : {
@@ -871,6 +873,9 @@
           }
         }
       }
+    },
+    "RawStudio needs full access to your photo library to find and process paired photos." : {
+
     },
     "Redo" : {
       "localizations" : {

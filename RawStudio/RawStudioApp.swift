@@ -1,6 +1,6 @@
 //
-//  RAW_JPGSplitApp.swift
-//  RAW+JPGSplit
+//  RawStudioApp.swift
+//  RawStudio
 //
 //  Created by edvard.zeng on 2026/4/5.
 //
@@ -9,7 +9,7 @@ import SwiftUI
 import Photos
 
 @main
-struct RAW_JPGSplitApp: App {
+struct RawStudioApp: App {
     init() {
         copyBundleResourcesToDocuments()
     }
