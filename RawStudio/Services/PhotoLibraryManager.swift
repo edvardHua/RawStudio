@@ -268,7 +268,7 @@ final class PhotoLibraryManager {
     /// 使用 `.opportunistic` 交付模式：cache 命中只 yield 一次；cache 未命中可能 yield 两次
     /// （先低清后高清），以 `PHImageResultIsDegradedKey == false` 的那次作为最终图存入缓存。
     func loadThumbnailStream(for pair: PhotoPair, size: CGSize) -> AsyncStream<UIImage> {
-        let key = "\(pair.id)@\(bucketWidth(size.width))" as NSString
+        let key = "\(pair.id)@\(bucketWidth(size.width))x\(bucketWidth(size.height))" as NSString
         let cache = thumbnailCache
         let manager = cachingManager
 
