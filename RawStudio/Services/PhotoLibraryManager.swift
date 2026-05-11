@@ -257,6 +257,65 @@ final class PhotoLibraryManager {
         return image
     }
 
+    /// 把任意宽度向上取整到 64 的倍数，避免不同请求把缓存撑爆 N 份
+    private func bucketWidth(_ w: CGFloat) -> Int {
+        ((Int(w) + 63) / 64) * 64
+    }
+
+    /// 高质量两阶段缩略图加载。
+    ///
+    /// `size` 是**像素**单位，调用方负责乘以 `displayScale`。
+    /// 使用 `.opportunistic` 交付模式：cache 命中只 yield 一次；cache 未命中可能 yield 两次
+    /// （先低清后高清），以 `PHImageResultIsDegradedKey == false` 的那次作为最终图存入缓存。
+    func loadThumbnailStream(for pair: PhotoPair, size: CGSize) -> AsyncStream<UIImage> {
+        let key = "\(pair.id)@\(bucketWidth(size.width))" as NSString
+        let cache = thumbnailCache
+        let manager = cachingManager
+
+        return AsyncStream { continuation in
+            // Cache 命中：直接 yield 最终图后 finish
+            if let cached = cache.object(forKey: key) {
+                continuation.yield(cached)
+                continuation.finish()
+                return
+            }
+
+            let options = PHImageRequestOptions()
+            options.deliveryMode = .opportunistic
+            options.resizeMode = .exact
+            options.isNetworkAccessAllowed = true
+            options.isSynchronous = false
+
+            let requestID = manager.requestImage(
+                for: pair.asset,
+                targetSize: size,
+                contentMode: .aspectFill,
+                options: options
+            ) { image, info in
+                let isDegraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
+                let isCancelled = (info?[PHImageCancelledKey] as? Bool) ?? false
+                let hasError = info?[PHImageErrorKey] != nil
+
+                if let image {
+                    continuation.yield(image)
+                    if !isDegraded {
+                        cache.setObject(image, forKey: key)
+                    }
+                }
+
+                // 终止条件：拿到非 degraded 图、被取消、或出错
+                if !isDegraded || isCancelled || hasError {
+                    continuation.finish()
+                }
+            }
+
+            // .task(id:) 切换 pair 时 stream 终止 → 取消未完成的 PHImage 请求
+            continuation.onTermination = { @Sendable _ in
+                manager.cancelImageRequest(requestID)
+            }
+        }
+    }
+
     // MARK: - Load Full Images for Compare
 
     private let ciContext = CIContext()
