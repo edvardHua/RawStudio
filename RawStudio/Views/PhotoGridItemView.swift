@@ -7,47 +7,54 @@ struct PhotoGridItemView: View {
     var manager: PhotoLibraryManager?
 
     @State private var thumbnail: UIImage?
+    @Environment(\.displayScale) private var displayScale
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            // Thumbnail
-            thumbnailView
-                .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
-                .aspectRatio(1, contentMode: .fit)
-                .clipped()
+        GeometryReader { proxy in
+            ZStack(alignment: .topLeading) {
+                // Thumbnail
+                thumbnailView
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+                    .clipped()
 
-            // Overlays
-            VStack(alignment: .leading, spacing: 0) {
-                HStack {
-                    // RAW format badge
-                    Text(pair.rawFormatLabel)
-                        .font(.system(size: 10, weight: .semibold))
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 2)
-                        .background(.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 3))
-                        .foregroundStyle(.white)
+                // Overlays
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack {
+                        // RAW format badge
+                        Text(pair.rawFormatLabel)
+                            .font(.system(size: 10, weight: .semibold))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 3))
+                            .foregroundStyle(.white)
+
+                        Spacer()
+
+                        // Selection checkbox
+                        if isSelecting {
+                            Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                                .font(.title3)
+                                .foregroundStyle(isSelected ? Color.accentColor : .white)
+                                .shadow(radius: 2)
+                        }
+                    }
+                    .padding(6)
 
                     Spacer()
-
-                    // Selection checkbox
-                    if isSelecting {
-                        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                            .font(.title3)
-                            .foregroundStyle(isSelected ? Color.accentColor : .white)
-                            .shadow(radius: 2)
-                    }
                 }
-                .padding(6)
-
-                Spacer()
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+            .task(id: pair.id) {
+                guard let manager else { return }
+                thumbnail = nil
+                let side = max(proxy.size.width, 1) * displayScale
+                let px = CGSize(width: side, height: side)
+                for await img in manager.loadThumbnailStream(for: pair, size: px) {
+                    thumbnail = img
+                }
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 4))
-        .task(id: pair.id) {
-            if let manager, thumbnail == nil {
-                thumbnail = await manager.loadThumbnail(for: pair)
-            }
-        }
+        .aspectRatio(1, contentMode: .fit)
     }
 
     @ViewBuilder

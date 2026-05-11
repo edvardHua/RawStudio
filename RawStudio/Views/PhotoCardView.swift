@@ -8,6 +8,7 @@ struct PhotoCardView: View {
     var manager: PhotoLibraryManager?
 
     @State private var thumbnail: UIImage?
+    @Environment(\.displayScale) private var displayScale
 
     private static let dateFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -63,8 +64,12 @@ struct PhotoCardView: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .task(id: pair.id) {
-            if let manager, thumbnail == nil {
-                thumbnail = await manager.loadThumbnail(for: pair)
+            guard let manager else { return }
+            thumbnail = nil   // 清掉视图复用残留的旧图
+            let side = 72 * displayScale
+            let px = CGSize(width: side, height: side)
+            for await img in manager.loadThumbnailStream(for: pair, size: px) {
+                thumbnail = img
             }
         }
     }
