@@ -1,0 +1,12 @@
+# Git worktrees (managed by Claude/superpowers)
+.worktrees/
+
+# Claude Code per-user state
+.claude/
+
+# macOS
+.DS_Store
+
+# Xcode user state
+xcuserdata/
+*.xcuserstate
