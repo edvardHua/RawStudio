@@ -50,7 +50,6 @@ final class PhotoLibraryManager {
     let thumbnailCache = NSCache<NSString, UIImage>()
 
     private let cachingManager = PHCachingImageManager()
-    private let thumbnailSize = CGSize(width: 160, height: 160)
 
     // MARK: - Permissions
 
@@ -226,36 +225,6 @@ final class PhotoLibraryManager {
     }
 
     // MARK: - Thumbnails
-
-    func loadThumbnail(for pair: PhotoPair) async -> UIImage? {
-        let key = pair.id as NSString
-
-        // Check cache first
-        if let cached = thumbnailCache.object(forKey: key) {
-            return cached
-        }
-
-        let options = PHImageRequestOptions()
-        options.deliveryMode = .fastFormat
-        options.resizeMode = .fast
-        options.isNetworkAccessAllowed = true
-        options.isSynchronous = false
-
-        let image = await withCheckedContinuation { (continuation: CheckedContinuation<UIImage?, Never>) in
-            cachingManager.requestImage(
-                for: pair.asset,
-                targetSize: thumbnailSize,
-                contentMode: .aspectFill,
-                options: options
-            ) { image, _ in
-                continuation.resume(returning: image)
-            }
-        }
-        if let image {
-            thumbnailCache.setObject(image, forKey: key)
-        }
-        return image
-    }
 
     /// 把任意宽度向上取整到 64 的倍数，避免不同请求把缓存撑爆 N 份
     private func bucketWidth(_ w: CGFloat) -> Int {
