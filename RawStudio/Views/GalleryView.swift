@@ -1,13 +1,15 @@
 import SwiftUI
 
 enum SourceFilter: CaseIterable {
+    case all
     case rawJPGPairs
     case rawOnly
 
     var label: String {
         switch self {
+        case .all:         return String(localized: "All")
         case .rawJPGPairs: return String(localized: "RAW+JPG")
-        case .rawOnly: return String(localized: "RAW Only")
+        case .rawOnly:     return String(localized: "RAW")
         }
     }
 }
@@ -20,7 +22,7 @@ enum GalleryLayout: String {
 struct GalleryView: View {
     @Bindable var manager: PhotoLibraryManager
     var presetStore: RAWEditPresetStore
-    @State private var sourceFilter: SourceFilter = .rawJPGPairs
+    @State private var sourceFilter: SourceFilter = .all
     @State private var layout: GalleryLayout = .list
     @State private var isSelecting = false
     @State private var selectedIDs: Set<String> = []
@@ -48,6 +50,7 @@ struct GalleryView: View {
 
     private var filteredPairs: [PhotoPair] {
         switch sourceFilter {
+        case .all:         return manager.pairs
         case .rawJPGPairs: return manager.pairs.filter { $0.kind == .rawJpgPair }
         case .rawOnly:     return manager.pairs.filter { $0.kind == .rawOnly }
         }
@@ -250,12 +253,17 @@ struct GalleryView: View {
             // Source filter pills (always visible)
             HStack(spacing: 8) {
                 filterCapsule(
+                    label: String(localized: "All"),
+                    isActive: sourceFilter == .all
+                ) { sourceFilter = .all }
+
+                filterCapsule(
                     label: String(localized: "RAW+JPG"),
                     isActive: sourceFilter == .rawJPGPairs
                 ) { sourceFilter = .rawJPGPairs }
 
                 filterCapsule(
-                    label: String(localized: "RAW Only"),
+                    label: String(localized: "RAW"),
                     isActive: sourceFilter == .rawOnly
                 ) { sourceFilter = .rawOnly }
 
@@ -289,14 +297,10 @@ struct GalleryView: View {
 
     private var batchActionCapsules: some View {
         HStack(spacing: 10) {
-            if sourceFilter == .rawOnly {
-                batchCapsule(icon: "sun.max", label: "HDR HEIF") {
-                    confirmBatchHDR("adaptiveHDR")
-                }
-                batchCapsule(icon: "sun.max.fill", label: "HDR JPEG") {
-                    confirmBatchHDR("ultraHDR")
-                }
-            } else {
+            switch sourceFilter {
+            case .all:
+                deleteCapsule { confirmBatchDelete() }
+            case .rawJPGPairs:
                 batchCapsule(icon: "square.and.arrow.down", label: "Save JPG") {
                     confirmBatch(.keepJPG)
                 }
@@ -305,6 +309,13 @@ struct GalleryView: View {
                 }
                 batchCapsule(icon: "sun.max.fill", label: "HDR") {
                     confirmBatchHDR("adaptiveHDR")
+                }
+            case .rawOnly:
+                batchCapsule(icon: "sun.max", label: "HDR HEIF") {
+                    confirmBatchHDR("adaptiveHDR")
+                }
+                batchCapsule(icon: "sun.max.fill", label: "HDR JPEG") {
+                    confirmBatchHDR("ultraHDR")
                 }
             }
             Spacer()
@@ -322,6 +333,23 @@ struct GalleryView: View {
                     .font(.footnote.weight(.medium))
                     .lineLimit(1)
             }
+            .padding(.horizontal, capsulePadH)
+            .padding(.vertical, capsulePadV)
+            .background(.ultraThinMaterial, in: Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func deleteCapsule(action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Image(systemName: "trash")
+                    .font(.subheadline.weight(.medium))
+                Text(String(localized: "Delete"))
+                    .font(.footnote.weight(.medium))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(.red)
             .padding(.horizontal, capsulePadH)
             .padding(.vertical, capsulePadV)
             .background(.ultraThinMaterial, in: Capsule())
@@ -500,6 +528,19 @@ struct GalleryView: View {
         pendingBatchHDRType = type
         pendingBatchAction = nil
         showBatchConfirm = true
+    }
+
+    private func confirmBatchDelete() {
+        let selected = manager.pairs.filter { selectedIDs.contains($0.id) }
+        guard !selected.isEmpty else { return }
+        Task {
+            let result = await manager.deleteAssets(selected)
+            if !result.cancelled {
+                isSelecting = false
+                selectedIDs.removeAll()
+            }
+            // result.cancelled == true：用户在系统弹框点取消，保留 selecting 状态
+        }
     }
 
     private func executeBatch() {
