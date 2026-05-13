@@ -224,6 +224,32 @@ final class PhotoLibraryManager {
         }
     }
 
+    // MARK: - Delete
+
+    /// 通过 PHPhotoLibrary 真删除选中资产。系统会弹原生确认 alert；
+    /// - 返回 .cancelled = true：用户在系统弹框选了取消（或权限不足）
+    /// - 返回 .deletedCount：实际删除数量；同时本地 `pairs` 数组同步移除
+    func deleteAssets(_ pairs: [PhotoPair]) async -> (deletedCount: Int, cancelled: Bool) {
+        guard !pairs.isEmpty else { return (0, false) }
+        let assets = pairs.map(\.asset)
+        let ids = Set(pairs.map(\.id))
+
+        let ok: Bool = await withCheckedContinuation { cont in
+            PHPhotoLibrary.shared().performChanges {
+                PHAssetChangeRequest.deleteAssets(assets as NSArray)
+            } completionHandler: { ok, _ in
+                cont.resume(returning: ok)
+            }
+        }
+
+        if ok {
+            self.pairs.removeAll { ids.contains($0.id) }
+            return (pairs.count, false)
+        } else {
+            return (0, true)
+        }
+    }
+
     // MARK: - Thumbnails
 
     /// 把任意宽度向上取整到 64 的倍数，避免不同请求把缓存撑爆 N 份
