@@ -5,11 +5,13 @@ struct PhotoGridItemView: View {
     let isSelecting: Bool
     let isSelected: Bool
     var manager: PhotoLibraryManager?
+    var presetStore: RAWEditPresetStore
 
     @State private var thumbnail: UIImage?
     @Environment(\.displayScale) private var displayScale
 
     var body: some View {
+        let _ = presetStore.changeCounter   // 订阅刷新触发
         GeometryReader { proxy in
             ZStack(alignment: .topLeading) {
                 // Thumbnail
@@ -19,7 +21,7 @@ struct PhotoGridItemView: View {
 
                 // Overlays
                 VStack(alignment: .leading, spacing: 0) {
-                    HStack {
+                    HStack(spacing: 4) {
                         // RAW format badge
                         Text(pair.formatLabel)
                             .font(.system(size: 10, weight: .semibold))
@@ -29,6 +31,14 @@ struct PhotoGridItemView: View {
                             .foregroundStyle(.white)
 
                         Spacer()
+
+                        // Edit / preset indicators
+                        if presetStore.isEdited(for: pair.id) {
+                            indicatorBadge(systemName: "pencil")
+                        }
+                        if presetStore.hasUsedPreset(for: pair.id) {
+                            indicatorBadge(systemName: "wand.and.stars")
+                        }
 
                         // Selection checkbox
                         if isSelecting {
@@ -70,5 +80,14 @@ struct PhotoGridItemView: View {
                     ProgressView()
                 }
         }
+    }
+
+    @ViewBuilder
+    private func indicatorBadge(systemName: String) -> some View {
+        Image(systemName: systemName)
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(.white)
+            .padding(5)
+            .background(.black.opacity(0.5), in: Circle())
     }
 }
