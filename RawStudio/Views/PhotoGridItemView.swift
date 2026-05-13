@@ -21,7 +21,7 @@ struct PhotoGridItemView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack {
                         // RAW format badge
-                        Text(pair.rawFormatLabel)
+                        Text(pair.formatLabel)
                             .font(.system(size: 10, weight: .semibold))
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)

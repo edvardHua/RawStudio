@@ -12,10 +12,11 @@ struct CompareView: View {
     @State private var rawImage: UIImage?
     @State private var jpgMetadata: PhotoMetadata?
     @State private var rawMetadata: PhotoMetadata?
+    @State private var isHDRJpgSource: Bool = false
     @State private var isLoadingImages = true
     @State private var isProcessing = false
     @State private var processingMessage = ""
-    @State private var showingRAW = true
+    @State private var showingRAW = false
     @State private var zoomState = ZoomState()
     @State private var showToast = false
     @State private var toastMessage = ""
@@ -172,7 +173,7 @@ struct CompareView: View {
             if let rawData = cachedRawData, let pair = currentPair {
                 RAWEditorView(
                     rawData: rawData,
-                    resourceHint: pair.rawResource.uniformTypeIdentifier,
+                    resourceHint: pair.rawResource?.uniformTypeIdentifier ?? "",
                     assetID: pair.id,
                     previewImageForMask: rawImage,
                     presetStore: presetStore,
@@ -212,8 +213,9 @@ struct CompareView: View {
     private var formatSwitcher: some View {
         if let pair = currentPair {
             HStack {
-                if pair.isRawOnly {
-                    // Static RAW badge
+                switch pair.kind {
+                case .rawOnly:
+                    // Static RAW badge（绿底）
                     Text("RAW")
                         .font(.footnote.bold())
                         .foregroundStyle(.white)
@@ -221,7 +223,18 @@ struct CompareView: View {
                         .padding(.vertical, capsulePadV)
                         .background(Color(red: 0.4, green: 0.8, blue: 0.5).opacity(0.85),
                                     in: RoundedRectangle(cornerRadius: 8))
-                } else {
+
+                case .jpgOnly:
+                    // Static format badge（灰底；显示实际格式名 HEIC/JPG/PNG…）
+                    Text(pair.formatLabel)
+                        .font(.footnote.bold())
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, capsulePadH)
+                        .padding(.vertical, capsulePadV)
+                        .background(Color(.systemGray3).opacity(0.85),
+                                    in: RoundedRectangle(cornerRadius: 8))
+
+                case .rawJpgPair:
                     // Segmented control for JPG/RAW
                     HStack(spacing: 0) {
                         formatTab(label: "JPG", isActive: !showingRAW) {
@@ -318,15 +331,15 @@ struct CompareView: View {
     private var actionRow: some View {
         HStack(spacing: 0) {
             if let pair = currentPair {
-                if pair.isRawOnly {
-                    // RAW-only: HDR exports + Edit
+                switch pair.kind {
+                case .rawOnly:
                     actionItem(icon: "sun.max", label: "HDR HEIF") { exportHDR() }
                     actionDivider
                     actionItem(icon: "sun.max.fill", label: "HDR JPEG") { exportUltraHDR() }
                     actionDivider
                     actionItem(icon: "slider.horizontal.3", label: "Edit") { openEditor() }
-                } else {
-                    // RAW+JPG pair
+
+                case .rawJpgPair:
                     actionItem(icon: "square.and.arrow.down", label: "Save JPG") { performAction(.keepJPG) }
                     actionDivider
                     actionItem(icon: "square.and.arrow.down.fill", label: "Save RAW") { performAction(.keepRAW) }
@@ -335,6 +348,13 @@ struct CompareView: View {
                     actionDivider
                     // HDR menu
                     hdrMenuButton
+
+                case .jpgOnly:
+                    if isHDRJpgSource {
+                        actionItem(icon: "sun.max.fill", label: "HDR JPEG") { exportUltraHDRFromImage() }
+                        actionDivider
+                    }
+                    actionItem(icon: "slider.horizontal.3", label: "Edit") { openEditor() }
                 }
             }
         }
@@ -390,41 +410,56 @@ struct CompareView: View {
     private func loadImages() async {
         guard let pair = currentPair else { return }
         isLoadingImages = true
+        defer { isLoadingImages = false }
         do {
-            let rawData = try await manager.extractRawData(for: pair.rawResource)
-            cachedRawData = rawData
-
-            if let jpgResource = pair.jpgResource {
-                let jpgData = try await manager.extractRawData(for: jpgResource)
-                cachedJPGData = jpgData
-            } else {
-                cachedJPGData = nil
-            }
-
             currentEditParams = presetStore.loadParams(for: pair.id)
             currentJPGEditParams = presetStore.loadJPGParams(for: pair.id)
             currentLayerEdits = presetStore.loadLayerEdits(for: pair.id)
             currentJPGLayerEdits = presetStore.loadJPGLayerEdits(for: pair.id)
 
-            let rawResult = try await manager.loadRAWImageWithMetadata(for: pair, editParams: currentEditParams)
-            rawImage = rawResult.0
-            rawMetadata = rawResult.1
-
-            if let jpgResult = try await manager.loadJPGImageWithMetadata(for: pair) {
-                jpgImage = jpgResult.0
-                jpgMetadata = jpgResult.1
+            // 加载 RAW（如有）
+            if let rawResource = pair.rawResource {
+                let rawData = try await manager.extractRawData(for: rawResource)
+                cachedRawData = rawData
+                let rawResult = try await manager.loadRAWImageWithMetadata(for: pair, editParams: currentEditParams)
+                rawImage = rawResult.0
+                rawMetadata = rawResult.1
             } else {
+                cachedRawData = nil
+                rawImage = nil
+                rawMetadata = nil
+            }
+
+            // 加载 JPG（如有）
+            if let jpgResource = pair.jpgResource {
+                let jpgData = try await manager.extractRawData(for: jpgResource)
+                cachedJPGData = jpgData
+                isHDRJpgSource = PhotoLibraryManager.isHDRImage(data: jpgData)
+                if let jpgResult = try await manager.loadJPGImageWithMetadata(for: pair) {
+                    jpgImage = jpgResult.0
+                    jpgMetadata = jpgResult.1
+                } else {
+                    jpgImage = nil
+                    jpgMetadata = nil
+                }
+            } else {
+                cachedJPGData = nil
+                isHDRJpgSource = false
                 jpgImage = nil
                 jpgMetadata = nil
             }
 
-            showingRAW = true
+            // 按 kind 设定显示哪一面
+            switch pair.kind {
+            case .rawOnly:    showingRAW = true
+            case .rawJpgPair: showingRAW = true     // 维持原默认行为
+            case .jpgOnly:    showingRAW = false
+            }
             zoomState = ZoomState()
         } catch {
             errorMessage = error.localizedDescription
             showError = true
         }
-        isLoadingImages = false
     }
 
     // MARK: - Actions
@@ -506,6 +541,26 @@ struct CompareView: View {
 
             do {
                 try await manager.exportUltraHDRJPEG(for: pair, editParams: currentEditParams)
+                isProcessing = false
+
+                toastMessage = String(localized: "Ultra HDR JPEG exported to library")
+                withAnimation { showToast = true }
+            } catch {
+                isProcessing = false
+                errorMessage = error.localizedDescription
+                showError = true
+            }
+        }
+    }
+
+    private func exportUltraHDRFromImage() {
+        guard let pair = currentPair, !isProcessing else { return }
+        Task {
+            isProcessing = true
+            processingMessage = String(localized: "Exporting Ultra HDR...")
+
+            do {
+                try await manager.exportUltraHDRJPEGFromImage(for: pair)
                 isProcessing = false
 
                 toastMessage = String(localized: "Ultra HDR JPEG exported to library")
