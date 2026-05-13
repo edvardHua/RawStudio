@@ -495,6 +495,59 @@ final class PhotoLibraryManager {
         )
     }
 
+    /// 判断给定的图像数据是否是 HDR（含 gain map 或 10-bit HLG 等标记）。
+    /// 用于决定是否在 CompareView 上显示 HDR JPEG 导出按钮。
+    static func isHDRImage(data: Data) -> Bool {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return false }
+        let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [String: Any]
+
+        // 1. depth >= 10（Apple HDR HEIC 都是 10-bit）
+        if let depth = properties?[kCGImagePropertyDepth as String] as? Int, depth >= 10 {
+            return true
+        }
+
+        // 2. 含 HDR gain map auxiliary data
+        let auxTypes: [CFString] = [
+            "kCGImageAuxiliaryDataTypeISOGainMap" as CFString,    // iOS 18+ ISO HDR
+            "kCGImageAuxiliaryDataTypeHDRGainMap" as CFString,    // Apple HDR
+        ]
+        for type in auxTypes {
+            if CGImageSourceCopyAuxiliaryDataInfoAtIndex(source, 0, type) != nil {
+                return true
+            }
+        }
+        return false
+    }
+
+    /// 把 HDR HEIC（或任何含 HDR gain map 的图）转成 Ultra HDR JPEG（Android 兼容的 MPF + gain map JPEG）。
+    /// 复用 UltraHDRWriter：SDR 路径走 sRGB（clamp），HDR 路径走 HLG（保留扩展），同一 CIImage 输入两次即可。
+    func exportUltraHDRJPEGFromImage(for pair: PhotoPair) async throws {
+        guard let jpgResource = pair.jpgResource else {
+            throw SplitError.extractionFailed("This photo has no image resource")
+        }
+        let data = try await extractResourceData(for: jpgResource)
+
+        guard let ciImage = CIImage(data: data, options: [.expandToHDR: true]) else {
+            throw SplitError.extractionFailed("Cannot decode image as HDR")
+        }
+
+        let exifProperties = Self.propertiesWithNormalizedOrientation(Self.extractImageProperties(from: data))
+
+        let writer = UltraHDRWriter(ciContext: ciContext)
+        let ultraHDRData = try writer.writeUltraHDRJPEG(
+            sdrImage: ciImage,
+            hdrImage: ciImage,
+            exifProperties: exifProperties
+        )
+
+        try await saveAsNewAsset(
+            data: ultraHDRData,
+            resourceType: .photo,
+            originalFilename: (jpgResource.originalFilename as NSString)
+                .deletingPathExtension + "_UltraHDR.jpg"
+        )
+    }
+
     func performAction(_ action: SplitAction, on pair: PhotoPair) async throws {
         guard pair.kind == .rawJpgPair else {
             throw SplitError.extractionFailed("This action requires a RAW+JPG pair")
