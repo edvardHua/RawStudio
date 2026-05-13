@@ -308,7 +308,9 @@ final class PhotoLibraryManager {
 
     /// Load RAW image and metadata using CIRAWFilter, optionally applying edit params
     func loadRAWImageWithMetadata(for pair: PhotoPair, editParams: RAWEditParams = RAWEditParams()) async throws -> (UIImage, PhotoMetadata) {
-        let resource = pair.rawResource
+        guard let resource = pair.rawResource else {
+            throw SplitError.extractionFailed("This photo has no RAW resource")
+        }
         let data = try await extractResourceData(for: resource)
         let fileSize = (try? resource.value(forKey: "fileSize") as? Int64) ?? Int64(data.count)
 
@@ -356,10 +358,13 @@ final class PhotoLibraryManager {
 
     /// Export Adaptive HDR HEIF from RAW data, preserving original EXIF metadata
     func exportAdaptiveHDR(for pair: PhotoPair, editParams: RAWEditParams = RAWEditParams()) async throws {
-        let rawData = try await extractResourceData(for: pair.rawResource)
+        guard let rawResource = pair.rawResource else {
+            throw SplitError.extractionFailed("This photo has no RAW resource")
+        }
+        let rawData = try await extractResourceData(for: rawResource)
 
-        guard let rawFilter = CIRAWFilter(imageData: rawData, identifierHint: pair.rawResource.uniformTypeIdentifier) else {
-            throw SplitError.extractionFailed("Cannot create RAW filter for \(pair.rawResource.originalFilename)")
+        guard let rawFilter = CIRAWFilter(imageData: rawData, identifierHint: rawResource.uniformTypeIdentifier) else {
+            throw SplitError.extractionFailed("Cannot create RAW filter for \(rawResource.originalFilename)")
         }
 
         // Apply edit params
@@ -406,17 +411,20 @@ final class PhotoLibraryManager {
         try await saveAsNewAsset(
             data: finalData,
             resourceType: .photo,
-            originalFilename: (pair.rawResource.originalFilename as NSString)
+            originalFilename: (rawResource.originalFilename as NSString)
                 .deletingPathExtension + "_HDR.heic"
         )
     }
 
     /// Export Ultra HDR JPEG (MPF format with gain map) from RAW data, preserving original EXIF metadata
     func exportUltraHDRJPEG(for pair: PhotoPair, editParams: RAWEditParams = RAWEditParams()) async throws {
-        let rawData = try await extractResourceData(for: pair.rawResource)
+        guard let rawResource = pair.rawResource else {
+            throw SplitError.extractionFailed("This photo has no RAW resource")
+        }
+        let rawData = try await extractResourceData(for: rawResource)
 
-        guard let rawFilter = CIRAWFilter(imageData: rawData, identifierHint: pair.rawResource.uniformTypeIdentifier) else {
-            throw SplitError.extractionFailed("Cannot create RAW filter for \(pair.rawResource.originalFilename)")
+        guard let rawFilter = CIRAWFilter(imageData: rawData, identifierHint: rawResource.uniformTypeIdentifier) else {
+            throw SplitError.extractionFailed("Cannot create RAW filter for \(rawResource.originalFilename)")
         }
 
         // Apply edit params
@@ -452,18 +460,18 @@ final class PhotoLibraryManager {
         try await saveAsNewAsset(
             data: ultraHDRData,
             resourceType: .photo,
-            originalFilename: (pair.rawResource.originalFilename as NSString)
+            originalFilename: (rawResource.originalFilename as NSString)
                 .deletingPathExtension + "_UltraHDR.jpg"
         )
     }
 
     func performAction(_ action: SplitAction, on pair: PhotoPair) async throws {
-        guard !pair.isRawOnly else {
-            throw SplitError.extractionFailed("Cannot perform this action on RAW-only photos")
+        guard pair.kind == .rawJpgPair else {
+            throw SplitError.extractionFailed("This action requires a RAW+JPG pair")
         }
-        guard let jpgResource = pair.jpgResource else {
-            throw SplitError.extractionFailed("No JPG resource found")
-        }
+        // kind == .rawJpgPair 保证两个资源都存在；下面的 force-unwrap 安全
+        let jpgResource = pair.jpgResource!
+        let rawResource = pair.rawResource!
 
         switch action {
         case .keepJPG:
@@ -471,8 +479,8 @@ final class PhotoLibraryManager {
             try await saveAsNewAsset(data: jpgData, resourceType: .photo, originalFilename: jpgResource.originalFilename)
 
         case .keepRAW:
-            let rawData = try await extractResourceData(for: pair.rawResource)
-            try await saveAsNewAsset(data: rawData, resourceType: .photo, originalFilename: pair.rawResource.originalFilename)
+            let rawData = try await extractResourceData(for: rawResource)
+            try await saveAsNewAsset(data: rawData, resourceType: .photo, originalFilename: rawResource.originalFilename)
         }
     }
 

@@ -48,8 +48,8 @@ struct GalleryView: View {
 
     private var filteredPairs: [PhotoPair] {
         switch sourceFilter {
-        case .rawJPGPairs: return manager.pairs.filter { !$0.isRawOnly }
-        case .rawOnly: return manager.pairs.filter { $0.isRawOnly }
+        case .rawJPGPairs: return manager.pairs.filter { $0.kind == .rawJpgPair }
+        case .rawOnly:     return manager.pairs.filter { $0.kind == .rawOnly }
         }
     }
 

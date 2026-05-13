@@ -44,7 +44,7 @@ struct PhotoCardView: View {
                     .foregroundStyle(.secondary)
 
                 HStack(spacing: 6) {
-                    Text(pair.rawFormatLabel)
+                    Text(pair.formatLabel)
                         .font(.caption2)
                         .fontWeight(.medium)
                         .padding(.horizontal, 6)

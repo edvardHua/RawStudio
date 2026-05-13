@@ -172,7 +172,7 @@ struct CompareView: View {
             if let rawData = cachedRawData, let pair = currentPair {
                 RAWEditorView(
                     rawData: rawData,
-                    resourceHint: pair.rawResource.uniformTypeIdentifier,
+                    resourceHint: pair.rawResource?.uniformTypeIdentifier ?? "",
                     assetID: pair.id,
                     previewImageForMask: rawImage,
                     presetStore: presetStore,
@@ -212,7 +212,7 @@ struct CompareView: View {
     private var formatSwitcher: some View {
         if let pair = currentPair {
             HStack {
-                if pair.isRawOnly {
+                if pair.kind == .rawOnly {
                     // Static RAW badge
                     Text("RAW")
                         .font(.footnote.bold())
@@ -318,7 +318,7 @@ struct CompareView: View {
     private var actionRow: some View {
         HStack(spacing: 0) {
             if let pair = currentPair {
-                if pair.isRawOnly {
+                if pair.kind == .rawOnly {
                     // RAW-only: HDR exports + Edit
                     actionItem(icon: "sun.max", label: "HDR HEIF") { exportHDR() }
                     actionDivider
@@ -391,8 +391,12 @@ struct CompareView: View {
         guard let pair = currentPair else { return }
         isLoadingImages = true
         do {
-            let rawData = try await manager.extractRawData(for: pair.rawResource)
-            cachedRawData = rawData
+            if let raw = pair.rawResource {
+                let rawData = try await manager.extractRawData(for: raw)
+                cachedRawData = rawData
+            } else {
+                cachedRawData = nil
+            }
 
             if let jpgResource = pair.jpgResource {
                 let jpgData = try await manager.extractRawData(for: jpgResource)
