@@ -16,6 +16,12 @@ final class RAWEditPresetStore {
     private let jpgAssetParamsPrefix = "jpgEditParams_"
     private let layerEditsPrefix = "layerEdits_"
     private let jpgLayerEditsPrefix = "layerEdits_jpg_"
+    private let usedRawPresetPrefix = "usedRawPreset_"
+    private let usedJpgPresetPrefix = "usedJpgPreset_"
+
+    /// 任意 UserDefaults 写操作后递增，迫使依赖此属性的 SwiftUI 视图重渲染。
+    /// （UserDefaults.set 本身不触发 @Observable 通知）
+    var changeCounter: Int = 0
 
     init() {
         loadPresets()
@@ -94,6 +100,7 @@ final class RAWEditPresetStore {
         if let data = try? JSONEncoder().encode(params) {
             UserDefaults.standard.set(data, forKey: key)
         }
+        changeCounter += 1
     }
 
     /// Check if an asset has custom RAW edit params.
@@ -106,6 +113,7 @@ final class RAWEditPresetStore {
     func removeParams(for assetID: String) {
         let key = assetParamsPrefix + assetID
         UserDefaults.standard.removeObject(forKey: key)
+        changeCounter += 1
     }
 
     // MARK: - Per-Asset JPG Params
@@ -126,6 +134,7 @@ final class RAWEditPresetStore {
         if let data = try? JSONEncoder().encode(params) {
             UserDefaults.standard.set(data, forKey: key)
         }
+        changeCounter += 1
     }
 
     // MARK: - Per-Asset Layer Edits (RAW)
@@ -146,6 +155,7 @@ final class RAWEditPresetStore {
         if let data = try? JSONEncoder().encode(edits) {
             UserDefaults.standard.set(data, forKey: key)
         }
+        changeCounter += 1
     }
 
     // MARK: - Per-Asset Layer Edits (JPG)
@@ -166,5 +176,49 @@ final class RAWEditPresetStore {
         if let data = try? JSONEncoder().encode(edits) {
             UserDefaults.standard.set(data, forKey: key)
         }
+        changeCounter += 1
+    }
+
+    // MARK: - Preset Usage Tracking
+
+    /// 标记用户在此 asset 上套用过 RAW 预设
+    func markRawPresetUsed(for assetID: String) {
+        UserDefaults.standard.set(true, forKey: usedRawPresetPrefix + assetID)
+        changeCounter += 1
+    }
+
+    /// 标记用户在此 asset 上套用过 JPG 预设
+    func markJpgPresetUsed(for assetID: String) {
+        UserDefaults.standard.set(true, forKey: usedJpgPresetPrefix + assetID)
+        changeCounter += 1
+    }
+
+    /// 清掉 RAW 预设标记（用户把 RAW 重置为默认时调）
+    func clearRawPresetUsed(for assetID: String) {
+        UserDefaults.standard.removeObject(forKey: usedRawPresetPrefix + assetID)
+        changeCounter += 1
+    }
+
+    /// 清掉 JPG 预设标记
+    func clearJpgPresetUsed(for assetID: String) {
+        UserDefaults.standard.removeObject(forKey: usedJpgPresetPrefix + assetID)
+        changeCounter += 1
+    }
+
+    // MARK: - Edit Status Queries
+
+    /// 实际产出是否不同于原图（任一编辑数据非默认即是）
+    func isEdited(for assetID: String) -> Bool {
+        if loadParams(for: assetID).isModified { return true }
+        if loadJPGParams(for: assetID).isModified { return true }
+        if loadLayerEdits(for: assetID).hasAnyLayerEdits { return true }
+        if loadJPGLayerEdits(for: assetID).hasAnyLayerEdits { return true }
+        return false
+    }
+
+    /// 是否曾套用过任一预设（RAW 或 JPG）
+    func hasUsedPreset(for assetID: String) -> Bool {
+        UserDefaults.standard.bool(forKey: usedRawPresetPrefix + assetID) ||
+        UserDefaults.standard.bool(forKey: usedJpgPresetPrefix + assetID)
     }
 }

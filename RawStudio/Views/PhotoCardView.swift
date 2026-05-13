@@ -6,6 +6,7 @@ struct PhotoCardView: View {
     let isSelected: Bool
     let onToggleSelect: () -> Void
     var manager: PhotoLibraryManager?
+    var presetStore: RAWEditPresetStore
 
     @State private var thumbnail: UIImage?
     @Environment(\.displayScale) private var displayScale
@@ -18,6 +19,7 @@ struct PhotoCardView: View {
     }()
 
     var body: some View {
+        let _ = presetStore.changeCounter   // 订阅刷新触发
         HStack(spacing: 12) {
             if isSelecting {
                 Button(action: onToggleSelect) {
@@ -50,6 +52,13 @@ struct PhotoCardView: View {
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(.fill, in: Capsule())
+
+                    if presetStore.isEdited(for: pair.id) {
+                        indicatorBadge(systemName: "pencil")
+                    }
+                    if presetStore.hasUsedPreset(for: pair.id) {
+                        indicatorBadge(systemName: "wand.and.stars")
+                    }
                 }
             }
 
@@ -87,5 +96,14 @@ struct PhotoCardView: View {
                     ProgressView()
                 }
         }
+    }
+
+    @ViewBuilder
+    private func indicatorBadge(systemName: String) -> some View {
+        Image(systemName: systemName)
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(.white)
+            .padding(5)
+            .background(.black.opacity(0.5), in: Circle())
     }
 }
