@@ -198,8 +198,8 @@ final class PhotoLibraryManager {
                         }
                     }
 
-                    if let raw = rawResource {
-                        let pair = PhotoPair(asset: asset, jpgResource: jpgResource, rawResource: raw)
+                    if jpgResource != nil || rawResource != nil {
+                        let pair = PhotoPair(asset: asset, jpgResource: jpgResource, rawResource: rawResource)
                         batchBuffer.append(pair)
                     }
 
