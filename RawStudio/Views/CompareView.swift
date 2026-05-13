@@ -12,6 +12,7 @@ struct CompareView: View {
     @State private var rawImage: UIImage?
     @State private var jpgMetadata: PhotoMetadata?
     @State private var rawMetadata: PhotoMetadata?
+    @State private var isHDRJpgSource: Bool = false
     @State private var isLoadingImages = true
     @State private var isProcessing = false
     @State private var processingMessage = ""
@@ -349,6 +350,10 @@ struct CompareView: View {
                     hdrMenuButton
 
                 case .jpgOnly:
+                    if isHDRJpgSource {
+                        actionItem(icon: "sun.max.fill", label: "HDR JPEG") { exportUltraHDRFromImage() }
+                        actionDivider
+                    }
                     actionItem(icon: "slider.horizontal.3", label: "Edit") { openEditor() }
                 }
             }
@@ -429,6 +434,7 @@ struct CompareView: View {
             if let jpgResource = pair.jpgResource {
                 let jpgData = try await manager.extractRawData(for: jpgResource)
                 cachedJPGData = jpgData
+                isHDRJpgSource = PhotoLibraryManager.isHDRImage(data: jpgData)
                 if let jpgResult = try await manager.loadJPGImageWithMetadata(for: pair) {
                     jpgImage = jpgResult.0
                     jpgMetadata = jpgResult.1
@@ -438,6 +444,7 @@ struct CompareView: View {
                 }
             } else {
                 cachedJPGData = nil
+                isHDRJpgSource = false
                 jpgImage = nil
                 jpgMetadata = nil
             }
@@ -534,6 +541,26 @@ struct CompareView: View {
 
             do {
                 try await manager.exportUltraHDRJPEG(for: pair, editParams: currentEditParams)
+                isProcessing = false
+
+                toastMessage = String(localized: "Ultra HDR JPEG exported to library")
+                withAnimation { showToast = true }
+            } catch {
+                isProcessing = false
+                errorMessage = error.localizedDescription
+                showError = true
+            }
+        }
+    }
+
+    private func exportUltraHDRFromImage() {
+        guard let pair = currentPair, !isProcessing else { return }
+        Task {
+            isProcessing = true
+            processingMessage = String(localized: "Exporting Ultra HDR...")
+
+            do {
+                try await manager.exportUltraHDRJPEGFromImage(for: pair)
                 isProcessing = false
 
                 toastMessage = String(localized: "Ultra HDR JPEG exported to library")
