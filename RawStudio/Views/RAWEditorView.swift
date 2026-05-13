@@ -95,6 +95,9 @@ struct RAWEditorView: View {
                     Button("Done") {
                         presetStore.saveParams(params, for: assetID)
                         presetStore.saveLayerEdits(layerEdits, for: assetID)
+                        if !params.isModified {
+                            presetStore.clearRawPresetUsed(for: assetID)
+                        }
                         onDone(params, layerEdits)
                         dismiss()
                     }
@@ -118,6 +121,7 @@ struct RAWEditorView: View {
                     presetStore: presetStore,
                     onSelect: { preset in
                         params = preset.params
+                        presetStore.markRawPresetUsed(for: assetID)
                     }
                 )
                 .presentationDetents([.medium])

@@ -111,6 +111,9 @@ struct JPGEditorView: View {
                     Button("Done") {
                         presetStore.saveJPGParams(params, for: assetID)
                         presetStore.saveJPGLayerEdits(layerEdits, for: assetID)
+                        if !params.isModified {
+                            presetStore.clearJpgPresetUsed(for: assetID)
+                        }
                         onDone(params, layerEdits, previewImage)
                         dismiss()
                     }
@@ -133,6 +136,7 @@ struct JPGEditorView: View {
                     presetStore: presetStore,
                     onSelect: { preset in
                         params = preset.params
+                        presetStore.markJpgPresetUsed(for: assetID)
                     }
                 )
                 .presentationDetents([.medium])
