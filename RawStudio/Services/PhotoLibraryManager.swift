@@ -229,22 +229,26 @@ final class PhotoLibraryManager {
     /// 通过 PHPhotoLibrary 真删除选中资产。系统会弹原生确认 alert；
     /// - 返回 .cancelled = true：用户在系统弹框选了取消（或权限不足）
     /// - 返回 .deletedCount：实际删除数量；同时本地 `pairs` 数组同步移除
-    func deleteAssets(_ pairs: [PhotoPair]) async -> (deletedCount: Int, cancelled: Bool) {
-        guard !pairs.isEmpty else { return (0, false) }
-        let assets = pairs.map(\.asset)
-        let ids = Set(pairs.map(\.id))
+    ///   （触发 @Observable 通知，订阅视图自动刷新）
+    func deleteAssets(_ pairsToDelete: [PhotoPair]) async -> (deletedCount: Int, cancelled: Bool) {
+        guard !pairsToDelete.isEmpty else { return (0, false) }
+        let assets = pairsToDelete.map(\.asset)
+        let ids = Set(pairsToDelete.map(\.id))
 
         let ok: Bool = await withCheckedContinuation { cont in
             PHPhotoLibrary.shared().performChanges {
                 PHAssetChangeRequest.deleteAssets(assets as NSArray)
-            } completionHandler: { ok, _ in
+            } completionHandler: { ok, error in
+                if !ok, let error {
+                    print("[PhotoLibraryManager] deleteAssets failed: \(error)")
+                }
                 cont.resume(returning: ok)
             }
         }
 
         if ok {
-            self.pairs.removeAll { ids.contains($0.id) }
-            return (pairs.count, false)
+            pairs.removeAll { ids.contains($0.id) }
+            return (pairsToDelete.count, false)
         } else {
             return (0, true)
         }
