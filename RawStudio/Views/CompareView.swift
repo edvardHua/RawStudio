@@ -209,6 +209,7 @@ struct CompareView: View {
                 )
             }
         }
+        .edgeOnlyPop()
     }
 
     // MARK: - Format Switcher
