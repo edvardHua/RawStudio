@@ -43,8 +43,6 @@ final class PhotoLibraryManager {
     var batchProgress: Int = 0
     var batchTotal: Int = 0
     var isBatchProcessing: Bool = false
-    var batchSuccessCount: Int = 0
-    var batchFailCount: Int = 0
 
     // Thumbnail cache (thread-safe, auto-evicts under memory pressure)
     let thumbnailCache = NSCache<NSString, UIImage>()
@@ -254,6 +252,28 @@ final class PhotoLibraryManager {
         }
     }
 
+    /// 新建一个 user album。失败抛 SplitError.writeFailed。
+    func createAlbum(name: String) async throws -> PHAssetCollection {
+        var placeholder: PHObjectPlaceholder?
+        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+            PHPhotoLibrary.shared().performChanges {
+                let request = PHAssetCollectionChangeRequest.creationRequestForAssetCollection(withTitle: name)
+                placeholder = request.placeholderForCreatedAssetCollection
+            } completionHandler: { ok, err in
+                if ok {
+                    cont.resume()
+                } else {
+                    cont.resume(throwing: SplitError.writeFailed(err?.localizedDescription ?? "Create album failed"))
+                }
+            }
+        }
+        guard let id = placeholder?.localIdentifier,
+              let collection = PHAssetCollection.fetchAssetCollections(withLocalIdentifiers: [id], options: nil).firstObject else {
+            throw SplitError.writeFailed("Created album not found after change")
+        }
+        return collection
+    }
+
     // MARK: - Thumbnails
 
     /// 把任意宽度向上取整到 64 的倍数，避免不同请求把缓存撑爆 N 份
@@ -387,7 +407,7 @@ final class PhotoLibraryManager {
     // MARK: - Core Operations
 
     /// Export Adaptive HDR HEIF from RAW data, preserving original EXIF metadata
-    func exportAdaptiveHDR(for pair: PhotoPair, editParams: RAWEditParams = RAWEditParams()) async throws {
+    func exportAdaptiveHDR(for pair: PhotoPair, editParams: RAWEditParams = RAWEditParams(), addToAlbum album: PHAssetCollection? = nil) async throws {
         guard let rawResource = pair.rawResource else {
             throw SplitError.extractionFailed("This photo has no RAW resource")
         }
@@ -442,12 +462,13 @@ final class PhotoLibraryManager {
             data: finalData,
             resourceType: .photo,
             originalFilename: (rawResource.originalFilename as NSString)
-                .deletingPathExtension + "_HDR.heic"
+                .deletingPathExtension + "_HDR.heic",
+            addToAlbum: album
         )
     }
 
     /// Export Ultra HDR JPEG (MPF format with gain map) from RAW data, preserving original EXIF metadata
-    func exportUltraHDRJPEG(for pair: PhotoPair, editParams: RAWEditParams = RAWEditParams()) async throws {
+    func exportUltraHDRJPEG(for pair: PhotoPair, editParams: RAWEditParams = RAWEditParams(), addToAlbum album: PHAssetCollection? = nil) async throws {
         guard let rawResource = pair.rawResource else {
             throw SplitError.extractionFailed("This photo has no RAW resource")
         }
@@ -491,7 +512,8 @@ final class PhotoLibraryManager {
             data: ultraHDRData,
             resourceType: .photo,
             originalFilename: (rawResource.originalFilename as NSString)
-                .deletingPathExtension + "_UltraHDR.jpg"
+                .deletingPathExtension + "_UltraHDR.jpg",
+            addToAlbum: album
         )
     }
 
@@ -521,7 +543,7 @@ final class PhotoLibraryManager {
 
     /// 把 HDR HEIC（或任何含 HDR gain map 的图）转成 Ultra HDR JPEG（Android 兼容的 MPF + gain map JPEG）。
     /// 复用 UltraHDRWriter：SDR 路径走 sRGB（clamp），HDR 路径走 HLG（保留扩展），同一 CIImage 输入两次即可。
-    func exportUltraHDRJPEGFromImage(for pair: PhotoPair) async throws {
+    func exportUltraHDRJPEGFromImage(for pair: PhotoPair, addToAlbum album: PHAssetCollection? = nil) async throws {
         guard let jpgResource = pair.jpgResource else {
             throw SplitError.extractionFailed("This photo has no image resource")
         }
@@ -544,8 +566,199 @@ final class PhotoLibraryManager {
             data: ultraHDRData,
             resourceType: .photo,
             originalFilename: (jpgResource.originalFilename as NSString)
-                .deletingPathExtension + "_UltraHDR.jpg"
+                .deletingPathExtension + "_UltraHDR.jpg",
+            addToAlbum: album
         )
+    }
+
+    // MARK: - Batch Export Router
+
+    /// 从 RAW 渲染 SDR JPEG 或 HEIC（不带 HDR），保留原始 EXIF。
+    private func exportRAWAsSDR(
+        for pair: PhotoPair,
+        format: ExportOptions.Format,
+        addToAlbum album: PHAssetCollection?
+    ) async throws {
+        guard let rawResource = pair.rawResource else {
+            throw SplitError.extractionFailed("This photo has no RAW resource")
+        }
+        let rawData = try await extractResourceData(for: rawResource)
+        guard let rawFilter = CIRAWFilter(imageData: rawData, identifierHint: rawResource.uniformTypeIdentifier) else {
+            throw SplitError.extractionFailed("Cannot create RAW filter for \(rawResource.originalFilename)")
+        }
+        // SDR: extendedDynamicRangeAmount 默认为 0
+        guard let sdrImage = rawFilter.outputImage else {
+            throw SplitError.extractionFailed("Cannot render SDR image from RAW")
+        }
+
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension(format == .jpg ? "jpg" : "heic")
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        let colorSpace = CGColorSpace(name: CGColorSpace.sRGB)!
+        let qualityKey = CIImageRepresentationOption(rawValue: kCGImageDestinationLossyCompressionQuality as String)
+        let opts: [CIImageRepresentationOption: Any] = [qualityKey: 0.92]
+
+        switch format {
+        case .jpg:
+            try ciContext.writeJPEGRepresentation(of: sdrImage, to: tempURL, colorSpace: colorSpace, options: opts)
+        case .heic:
+            try ciContext.writeHEIFRepresentation(of: sdrImage, to: tempURL, format: .RGBA8, colorSpace: colorSpace, options: opts)
+        }
+
+        // 注入原 EXIF
+        let exifProperties = Self.propertiesWithNormalizedOrientation(Self.extractImageProperties(from: rawData))
+        let finalData: Data
+        if let injected = Self.injectMetadata(into: tempURL, properties: exifProperties) {
+            finalData = injected
+        } else {
+            finalData = try Data(contentsOf: tempURL)
+        }
+
+        let baseName = (rawResource.originalFilename as NSString).deletingPathExtension
+        let outName = baseName + "." + (format == .jpg ? "jpg" : "heic")
+        try await saveAsNewAsset(data: finalData, resourceType: .photo, originalFilename: outName, addToAlbum: album)
+    }
+
+    /// 保留原图路径：根据 (format, useHDR) 与原图实际格式/HDR 状态决定 save-as-is / 转码 / HDR fallback。
+    private func exportOriginal(
+        for pair: PhotoPair,
+        format: ExportOptions.Format,
+        useHDR: Bool,
+        addToAlbum album: PHAssetCollection?
+    ) async throws {
+        guard let jpgResource = pair.jpgResource else {
+            throw SplitError.extractionFailed("No original image")
+        }
+        let data = try await extractResourceData(for: jpgResource)
+        let sourceUTI = jpgResource.uniformTypeIdentifier.lowercased()
+        let sourceIsHEIC = sourceUTI.contains("heic") || sourceUTI.contains("heif")
+        let sourceIsJPEG = sourceUTI.contains("jpeg") || sourceUTI.contains("jpg")
+        let sourceIsHDR = Self.isHDRImage(data: data)
+
+        // 路径 A：HDR ON + 原图 HDR + 目标 JPG → 直接复用 exportUltraHDRJPEGFromImage
+        if useHDR && sourceIsHDR && format == .jpg {
+            try await exportUltraHDRJPEGFromImage(for: pair, addToAlbum: album)
+            return
+        }
+
+        // 路径 B：HDR ON + 原图 HDR + 目标 HEIC → save as-is（HDR 已 baked in）
+        if useHDR && sourceIsHDR && format == .heic && sourceIsHEIC {
+            try await saveAsNewAsset(data: data, resourceType: .photo, originalFilename: jpgResource.originalFilename, addToAlbum: album)
+            return
+        }
+
+        // 路径 C：格式与原图一致 → save as-is（fastest）
+        if (format == .jpg && sourceIsJPEG) || (format == .heic && sourceIsHEIC) {
+            try await saveAsNewAsset(data: data, resourceType: .photo, originalFilename: jpgResource.originalFilename, addToAlbum: album)
+            return
+        }
+
+        // 路径 D：需要转码（HEIC↔JPG），HDR fallback 到 SDR
+        // 注：罕见的"HDR JPEG → HEIC"路径会在此降级（HDR 信息丢失）；spec 已接受 best-effort。
+        // 拒绝非 JPEG/HEIC 源（PNG/AVIF 等），避免静默格式转换。
+        guard sourceIsJPEG || sourceIsHEIC else {
+            throw SplitError.extractionFailed("Unsupported source format: \(sourceUTI)")
+        }
+        guard let ciImage = CIImage(data: data) else {
+            throw SplitError.extractionFailed("Cannot decode source image")
+        }
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension(format == .jpg ? "jpg" : "heic")
+        defer { try? FileManager.default.removeItem(at: tempURL) }
+
+        let colorSpace = CGColorSpace(name: CGColorSpace.sRGB)!
+        let qualityKey = CIImageRepresentationOption(rawValue: kCGImageDestinationLossyCompressionQuality as String)
+        let opts: [CIImageRepresentationOption: Any] = [qualityKey: 0.92]
+
+        switch format {
+        case .jpg:
+            try ciContext.writeJPEGRepresentation(of: ciImage, to: tempURL, colorSpace: colorSpace, options: opts)
+        case .heic:
+            try ciContext.writeHEIFRepresentation(of: ciImage, to: tempURL, format: .RGBA8, colorSpace: colorSpace, options: opts)
+        }
+
+        let exifProperties = Self.propertiesWithNormalizedOrientation(Self.extractImageProperties(from: data))
+        let finalData: Data
+        if let injected = Self.injectMetadata(into: tempURL, properties: exifProperties) {
+            finalData = injected
+        } else {
+            finalData = try Data(contentsOf: tempURL)
+        }
+
+        let baseName = (jpgResource.originalFilename as NSString).deletingPathExtension
+        let outName = baseName + "." + (format == .jpg ? "jpg" : "heic")
+        try await saveAsNewAsset(data: finalData, resourceType: .photo, originalFilename: outName, addToAlbum: album)
+    }
+
+    /// 单张导出总入口；按 options 派发到具体路径。
+    func exportOne(
+        _ pair: PhotoPair,
+        options: ExportOptions,
+        addToAlbum album: PHAssetCollection?
+    ) async throws {
+        switch (options.source, options.format, options.useHDR) {
+        case (.fromRaw, .jpg, true):
+            try await exportUltraHDRJPEG(for: pair, addToAlbum: album)
+
+        case (.fromRaw, .heic, true):
+            try await exportAdaptiveHDR(for: pair, addToAlbum: album)
+
+        case (.fromRaw, _, false):
+            try await exportRAWAsSDR(for: pair, format: options.format, addToAlbum: album)
+
+        case (.original, _, _):
+            try await exportOriginal(for: pair, format: options.format, useHDR: options.useHDR, addToAlbum: album)
+        }
+    }
+
+    /// 批量导出。返回 (成功数, 失败数, 创建相册的错误信息)。
+    /// 即使相册创建失败也会继续导出（不加入相册）。
+    func performExportBatch(
+        _ pairs: [PhotoPair],
+        options: ExportOptions
+    ) async -> (success: Int, failed: Int, albumError: String?) {
+        isBatchProcessing = true
+        batchTotal = pairs.count
+        batchProgress = 0
+        defer { isBatchProcessing = false }
+
+        var album: PHAssetCollection? = nil
+        var albumError: String? = nil
+        switch options.album {
+        case .none:
+            break
+        case .createNew(let name):
+            let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                do {
+                    album = try await createAlbum(name: trimmed)
+                } catch {
+                    albumError = error.localizedDescription
+                    // 不中止；继续导出但不加入相册
+                }
+            }
+        case .existing(let id):
+            album = PHAssetCollection.fetchAssetCollections(withLocalIdentifiers: [id], options: nil).firstObject
+            if album == nil {
+                albumError = String(localized: "Selected album not found")
+            }
+        }
+
+        var success = 0
+        var failed = 0
+        for pair in pairs {
+            do {
+                try await exportOne(pair, options: options, addToAlbum: album)
+                success += 1
+            } catch {
+                failed += 1
+            }
+            batchProgress += 1
+        }
+        return (success, failed, albumError)
     }
 
     func performAction(_ action: SplitAction, on pair: PhotoPair) async throws {
@@ -571,27 +784,6 @@ final class PhotoLibraryManager {
     /// Returns true if user allowed the deletion, false if denied.
     func deleteOriginal(for pair: PhotoPair) async -> Bool {
         await deleteAssetWithResult(pair.asset)
-    }
-
-    func performBatchAction(_ action: SplitAction, on selectedPairs: [PhotoPair]) async -> (success: Int, failed: Int) {
-        isBatchProcessing = true
-        batchTotal = selectedPairs.count
-        batchProgress = 0
-        batchSuccessCount = 0
-        batchFailCount = 0
-
-        for pair in selectedPairs {
-            do {
-                try await performAction(action, on: pair)
-                batchSuccessCount += 1
-            } catch {
-                batchFailCount += 1
-            }
-            batchProgress += 1
-        }
-
-        isBatchProcessing = false
-        return (batchSuccessCount, batchFailCount)
     }
 
     // MARK: - EXIF Metadata
@@ -685,13 +877,25 @@ final class PhotoLibraryManager {
         }
     }
 
-    private func saveAsNewAsset(data: Data, resourceType: PHAssetResourceType, originalFilename: String) async throws {
+    private func saveAsNewAsset(
+        data: Data,
+        resourceType: PHAssetResourceType,
+        originalFilename: String,
+        addToAlbum album: PHAssetCollection? = nil
+    ) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             PHPhotoLibrary.shared().performChanges({
-                let request = PHAssetCreationRequest.forAsset()
+                let creationRequest = PHAssetCreationRequest.forAsset()
                 let options = PHAssetResourceCreationOptions()
                 options.originalFilename = originalFilename
-                request.addResource(with: resourceType, data: data, options: options)
+                creationRequest.addResource(with: resourceType, data: data, options: options)
+                // 用导出时刻作为 Photos 库的 creationDate，让新图出现在时间线最顶端、便于查找
+                creationRequest.creationDate = Date()
+
+                if let album, let placeholder = creationRequest.placeholderForCreatedAsset {
+                    let albumChange = PHAssetCollectionChangeRequest(for: album)
+                    albumChange?.addAssets([placeholder] as NSArray)
+                }
             }) { success, error in
                 if success {
                     continuation.resume()
