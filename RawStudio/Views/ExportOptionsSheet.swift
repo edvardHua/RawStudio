@@ -190,6 +190,7 @@ struct ExportOptionsSheet: View {
     private static func defaultAlbumName() -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd HH:mm"
-        return "Export \(formatter.string(from: Date()))"
+        // 日期前缀让相簿名按"名称"排序时也是倒序时间（最新在顶）
+        return "\(formatter.string(from: Date())) \(String(localized: "Export"))"
     }
 }
