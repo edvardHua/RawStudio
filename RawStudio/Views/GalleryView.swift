@@ -139,7 +139,8 @@ struct GalleryView: View {
                     manager: manager,
                     pairs: filteredPairs,
                     startIndex: index,
-                    presetStore: presetStore
+                    presetStore: presetStore,
+                    tagStore: tagStore
                 )
             }
             .sheet(isPresented: $showAlbumPicker) {
