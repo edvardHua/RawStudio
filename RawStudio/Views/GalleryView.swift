@@ -320,9 +320,13 @@ struct GalleryView: View {
                 Button {
                     tagFilter = tag
                 } label: {
-                    Label(tag.label,
-                          systemImage: tagFilter == tag ? "checkmark.circle.fill" : "circle.fill")
-                        .foregroundStyle(tag.color)
+                    // Menu 会覆盖 Label 的 foregroundStyle；用 init(title:icon:) 形式把颜色加在 Image 上才生效
+                    Label {
+                        Text(tag.label)
+                    } icon: {
+                        Image(systemName: tagFilter == tag ? "checkmark.circle.fill" : "circle.fill")
+                            .foregroundStyle(tag.color)
+                    }
                 }
             }
         } label: {
@@ -414,8 +418,13 @@ struct GalleryView: View {
                 Button {
                     tagStore.setTag(tag, for: Array(selectedIDs))
                 } label: {
-                    Label(tag.label, systemImage: "circle.fill")
-                        .foregroundStyle(tag.color)
+                    // 同 tagFilterCapsule：颜色加在 Image 上而非 Label，避免被 Menu 系统色覆盖
+                    Label {
+                        Text(tag.label)
+                    } icon: {
+                        Image(systemName: "circle.fill")
+                            .foregroundStyle(tag.color)
+                    }
                 }
             }
             Divider()
