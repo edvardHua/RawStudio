@@ -49,7 +49,6 @@ struct GalleryView: View {
     ]
 
     private var filteredPairs: [PhotoPair] {
-        let _ = tagStore.changeCounter   // 订阅 tag 变化触发刷新
         let base: [PhotoPair]
         switch sourceFilter {
         case .all:         base = manager.pairs
@@ -312,19 +311,23 @@ struct GalleryView: View {
             Button {
                 tagFilter = nil
             } label: {
-                Label(String(localized: "All Tags"),
-                      systemImage: tagFilter == nil ? "checkmark" : "circle")
+                Label {
+                    Text("\(String(localized: "All Tags")) · \(tagStore.tags.count)")
+                } icon: {
+                    Image(systemName: tagFilter == nil ? "checkmark" : "circle")
+                }
             }
             Divider()
             ForEach(PhotoTag.allCases) { tag in
                 Button {
                     tagFilter = tag
                 } label: {
-                    // Menu 会覆盖 Label 的 foregroundStyle；用 init(title:icon:) 形式把颜色加在 Image 上才生效
+                    // Menu 会把 Label 的 foregroundStyle 改成系统色；用 palette 渲染 + Image 上着色才生效
                     Label {
-                        Text(tag.label)
+                        Text("\(tag.label) · \(tagStore.count(for: tag))")
                     } icon: {
                         Image(systemName: tagFilter == tag ? "checkmark.circle.fill" : "circle.fill")
+                            .symbolRenderingMode(.palette)
                             .foregroundStyle(tag.color)
                     }
                 }
@@ -418,11 +421,12 @@ struct GalleryView: View {
                 Button {
                     tagStore.setTag(tag, for: Array(selectedIDs))
                 } label: {
-                    // 同 tagFilterCapsule：颜色加在 Image 上而非 Label，避免被 Menu 系统色覆盖
+                    // 同 tagFilterCapsule：palette 渲染 + 在 Image 上着色，避免被 Menu 系统色覆盖
                     Label {
                         Text(tag.label)
                     } icon: {
                         Image(systemName: "circle.fill")
+                            .symbolRenderingMode(.palette)
                             .foregroundStyle(tag.color)
                     }
                 }

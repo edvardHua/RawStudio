@@ -64,7 +64,6 @@ struct CompareView: View {
     // MARK: - Body
 
     var body: some View {
-        let _ = tagStore.changeCounter
         ZStack {
             Color(.systemBackground).ignoresSafeArea()
 

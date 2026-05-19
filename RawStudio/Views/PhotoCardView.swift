@@ -21,7 +21,6 @@ struct PhotoCardView: View {
 
     var body: some View {
         let _ = presetStore.changeCounter   // 订阅刷新触发
-        let _ = tagStore.changeCounter
         HStack(spacing: 12) {
             if isSelecting {
                 Button(action: onToggleSelect) {

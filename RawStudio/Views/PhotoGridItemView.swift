@@ -13,7 +13,6 @@ struct PhotoGridItemView: View {
 
     var body: some View {
         let _ = presetStore.changeCounter   // 订阅刷新触发
-        let _ = tagStore.changeCounter
         GeometryReader { proxy in
             ZStack(alignment: .topLeading) {
                 // Thumbnail
