@@ -26,9 +26,7 @@ struct GalleryView: View {
     @State private var layout: GalleryLayout = .list
     @State private var isSelecting = false
     @State private var selectedIDs: Set<String> = []
-    @State private var showBatchConfirm = false
-    @State private var pendingBatchAction: SplitAction?
-    @State private var pendingBatchHDRType: String?
+    @State private var showExportSheet = false
     @State private var showBatchResult = false
     @State private var batchResultMessage = ""
     @State private var navigateToCompareIndex: Int?
@@ -108,13 +106,16 @@ struct GalleryView: View {
                     galleryBottomBar
                 }
             }
-            .alert("Confirm", isPresented: $showBatchConfirm) {
-                Button("Confirm") {
-                    executeBatch()
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text(batchConfirmMessage)
+            .sheet(isPresented: $showExportSheet) {
+                ExportOptionsSheet(
+                    selectedCount: selectedIDs.count,
+                    filter: sourceFilter,
+                    onCancel: { showExportSheet = false },
+                    onConfirm: { options in
+                        showExportSheet = false
+                        executeExport(options: options)
+                    }
+                )
             }
             .alert("Done", isPresented: $showBatchResult) {
                 Button("OK") {
@@ -300,23 +301,11 @@ struct GalleryView: View {
             switch sourceFilter {
             case .all:
                 deleteCapsule { confirmBatchDelete() }
-            case .rawJPGPairs:
-                batchCapsule(icon: "square.and.arrow.down", label: "Save JPG") {
-                    confirmBatch(.keepJPG)
+            case .rawJPGPairs, .rawOnly:
+                batchCapsule(icon: "square.and.arrow.up", label: "Export") {
+                    showExportSheet = true
                 }
-                batchCapsule(icon: "square.and.arrow.down.fill", label: "Save RAW") {
-                    confirmBatch(.keepRAW)
-                }
-                batchCapsule(icon: "sun.max.fill", label: "HDR") {
-                    confirmBatchHDR("adaptiveHDR")
-                }
-            case .rawOnly:
-                batchCapsule(icon: "sun.max", label: "HDR HEIF") {
-                    confirmBatchHDR("adaptiveHDR")
-                }
-                batchCapsule(icon: "sun.max.fill", label: "HDR JPEG") {
-                    confirmBatchHDR("ultraHDR")
-                }
+                deleteCapsule { confirmBatchDelete() }
             }
             Spacer()
         }
@@ -503,35 +492,6 @@ struct GalleryView: View {
         }
     }
 
-    private var batchConfirmMessage: String {
-        let count = selectedIDs.count
-        if let hdrType = pendingBatchHDRType {
-            let format = hdrType == "adaptiveHDR"
-                ? String(localized: "Adaptive HDR (HEIF)")
-                : String(localized: "Ultra HDR (JPEG)")
-            return String(localized: "Export \(count) photos as \(format)")
-        }
-        guard let action = pendingBatchAction else { return "" }
-        let actionLine: String
-        switch action {
-        case .keepJPG: actionLine = String(localized: "Save JPG for \(count) photos")
-        case .keepRAW: actionLine = String(localized: "Save RAW for \(count) photos")
-        }
-        return actionLine
-    }
-
-    private func confirmBatch(_ action: SplitAction) {
-        pendingBatchAction = action
-        pendingBatchHDRType = nil
-        showBatchConfirm = true
-    }
-
-    private func confirmBatchHDR(_ type: String) {
-        pendingBatchHDRType = type
-        pendingBatchAction = nil
-        showBatchConfirm = true
-    }
-
     private func confirmBatchDelete() {
         let selected = manager.pairs.filter { selectedIDs.contains($0.id) }
         guard !selected.isEmpty else { return }
@@ -545,41 +505,17 @@ struct GalleryView: View {
         }
     }
 
-    private func executeBatch() {
+    private func executeExport(options: ExportOptions) {
         let selected = manager.pairs.filter { selectedIDs.contains($0.id) }
-
-        if let hdrType = pendingBatchHDRType {
-            Task {
-                manager.isBatchProcessing = true
-                manager.batchTotal = selected.count
-                manager.batchProgress = 0
-                var success = 0
-                var failed = 0
-
-                for pair in selected {
-                    do {
-                        if hdrType == "adaptiveHDR" {
-                            try await manager.exportAdaptiveHDR(for: pair)
-                        } else {
-                            try await manager.exportUltraHDRJPEG(for: pair)
-                        }
-                        success += 1
-                    } catch {
-                        failed += 1
-                    }
-                    manager.batchProgress += 1
-                }
-
-                manager.isBatchProcessing = false
-                batchResultMessage = String(localized: "Successfully processed \(success), failed \(failed).")
-                showBatchResult = true
+        guard !selected.isEmpty else { return }
+        Task {
+            let result = await manager.performExportBatch(selected, options: options)
+            var msg = String(localized: "Successfully exported \(result.success), failed \(result.failed).")
+            if let err = result.albumError {
+                msg += "\n" + String(localized: "Album creation failed: \(err)")
             }
-        } else if let action = pendingBatchAction {
-            Task {
-                let result = await manager.performBatchAction(action, on: selected)
-                batchResultMessage = String(localized: "Successfully processed \(result.success), failed \(result.failed).")
-                showBatchResult = true
-            }
+            batchResultMessage = msg
+            showBatchResult = true
         }
     }
 }
