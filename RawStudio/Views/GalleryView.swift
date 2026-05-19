@@ -110,6 +110,7 @@ struct GalleryView: View {
                 ExportOptionsSheet(
                     selectedCount: selectedIDs.count,
                     filter: sourceFilter,
+                    manager: manager,
                     onCancel: { showExportSheet = false },
                     onConfirm: { options in
                         showExportSheet = false

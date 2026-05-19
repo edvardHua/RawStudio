@@ -1,16 +1,28 @@
 import SwiftUI
+import Photos
 
 struct ExportOptionsSheet: View {
     let selectedCount: Int
     let filter: SourceFilter
+    let manager: PhotoLibraryManager
     let onCancel: () -> Void
     let onConfirm: (ExportOptions) -> Void
+
+    // 局部 picker tag，不污染 ExportOptions 模型
+    private enum AlbumMode: Hashable {
+        case none
+        case createNew
+        case existing
+    }
 
     @State private var source: ExportOptions.Source = .original
     @State private var format: ExportOptions.Format = .jpg
     @State private var useHDR: Bool = false
-    @State private var saveToNewAlbum: Bool = false
+    @State private var albumMode: AlbumMode = .none
     @State private var albumName: String = ExportOptionsSheet.defaultAlbumName()
+    @State private var selectedExistingAlbumID: String? = nil
+    @State private var selectedExistingAlbumTitle: String? = nil
+    @State private var showAlbumPicker: Bool = false
 
     var body: some View {
         NavigationStack {
@@ -52,11 +64,39 @@ struct ExportOptionsSheet: View {
                     // Save To
                     sectionGroup(title: String(localized: "Save To")) {
                         VStack(spacing: 12) {
-                            Toggle(String(localized: "Save to New Album"), isOn: $saveToNewAlbum)
-                            if saveToNewAlbum {
+                            Picker("", selection: $albumMode) {
+                                Text("None").tag(AlbumMode.none)
+                                Text("New").tag(AlbumMode.createNew)
+                                Text("Existing").tag(AlbumMode.existing)
+                            }
+                            .pickerStyle(.segmented)
+
+                            switch albumMode {
+                            case .none:
+                                EmptyView()
+
+                            case .createNew:
                                 TextField(String(localized: "Album Name"), text: $albumName)
                                     .textFieldStyle(.roundedBorder)
                                     .submitLabel(.done)
+
+                            case .existing:
+                                Button {
+                                    showAlbumPicker = true
+                                } label: {
+                                    HStack {
+                                        Text(String(localized: "Choose Album"))
+                                            .foregroundStyle(.primary)
+                                        Spacer()
+                                        Text(selectedExistingAlbumTitle ?? String(localized: "Not Selected"))
+                                            .foregroundStyle(.secondary)
+                                            .lineLimit(1)
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption)
+                                            .foregroundStyle(.tertiary)
+                                    }
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
                     }
@@ -65,10 +105,14 @@ struct ExportOptionsSheet: View {
                     Button {
                         let trimmed = albumName.trimmingCharacters(in: .whitespacesAndNewlines)
                         let albumTarget: ExportOptions.AlbumTarget
-                        if saveToNewAlbum {
-                            albumTarget = .createNew(name: trimmed.isEmpty ? Self.defaultAlbumName() : trimmed)
-                        } else {
+                        switch albumMode {
+                        case .none:
                             albumTarget = .none
+                        case .createNew:
+                            albumTarget = .createNew(name: trimmed.isEmpty ? Self.defaultAlbumName() : trimmed)
+                        case .existing:
+                            // disabled-button 守卫保证 selectedExistingAlbumID 非 nil
+                            albumTarget = .existing(id: selectedExistingAlbumID!)
                         }
                         onConfirm(ExportOptions(
                             source: filter == .rawOnly ? .fromRaw : source,
@@ -79,13 +123,17 @@ struct ExportOptionsSheet: View {
                     } label: {
                         Text("Export \(selectedCount) Photos")
                             .font(.body.weight(.semibold))
-                            .foregroundStyle(.white)
+                            .foregroundStyle(isExportReady ? .white : Color.white.opacity(0.5))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
-                            .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 14))
+                            .background(
+                                isExportReady ? AnyShapeStyle(Color.accentColor) : AnyShapeStyle(Color.gray.opacity(0.5)),
+                                in: RoundedRectangle(cornerRadius: 14)
+                            )
                             .padding(.horizontal, 16)
                     }
                     .buttonStyle(.plain)
+                    .disabled(!isExportReady)
                     .padding(.top, 8)
                 }
                 .padding(.vertical, 16)
@@ -96,6 +144,18 @@ struct ExportOptionsSheet: View {
                 ToolbarItem(placement: .topBarLeading) {
                     Button(String(localized: "Cancel"), action: onCancel)
                 }
+            }
+            .sheet(isPresented: $showAlbumPicker) {
+                let writableAlbums = manager.albums.filter { $0.collection.canPerform(.addContent) }
+                AlbumPickerView(
+                    albums: writableAlbums,
+                    selectedAlbumID: selectedExistingAlbumID,
+                    onSelect: { album in
+                        selectedExistingAlbumID = album.id
+                        selectedExistingAlbumTitle = album.title
+                    },
+                    isPresented: $showAlbumPicker
+                )
             }
         }
         .presentationDetents([.medium, .large])
@@ -117,6 +177,13 @@ struct ExportOptionsSheet: View {
                 .padding(.vertical, 12)
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
                 .padding(.horizontal, 16)
+        }
+    }
+
+    private var isExportReady: Bool {
+        switch albumMode {
+        case .none, .createNew: return true
+        case .existing: return selectedExistingAlbumID != nil
         }
     }
 
