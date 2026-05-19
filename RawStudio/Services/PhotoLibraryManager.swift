@@ -254,6 +254,28 @@ final class PhotoLibraryManager {
         }
     }
 
+    /// 新建一个 user album。失败抛 SplitError.writeFailed。
+    func createAlbum(name: String) async throws -> PHAssetCollection {
+        var placeholder: PHObjectPlaceholder?
+        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+            PHPhotoLibrary.shared().performChanges {
+                let request = PHAssetCollectionChangeRequest.creationRequestForAssetCollection(withTitle: name)
+                placeholder = request.placeholderForCreatedAssetCollection
+            } completionHandler: { ok, err in
+                if ok {
+                    cont.resume()
+                } else {
+                    cont.resume(throwing: SplitError.writeFailed(err?.localizedDescription ?? "Create album failed"))
+                }
+            }
+        }
+        guard let id = placeholder?.localIdentifier,
+              let collection = PHAssetCollection.fetchAssetCollections(withLocalIdentifiers: [id], options: nil).firstObject else {
+            throw SplitError.writeFailed("Created album not found after change")
+        }
+        return collection
+    }
+
     // MARK: - Thumbnails
 
     /// 把任意宽度向上取整到 64 的倍数，避免不同请求把缓存撑爆 N 份
@@ -685,13 +707,23 @@ final class PhotoLibraryManager {
         }
     }
 
-    private func saveAsNewAsset(data: Data, resourceType: PHAssetResourceType, originalFilename: String) async throws {
+    private func saveAsNewAsset(
+        data: Data,
+        resourceType: PHAssetResourceType,
+        originalFilename: String,
+        addToAlbum album: PHAssetCollection? = nil
+    ) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             PHPhotoLibrary.shared().performChanges({
-                let request = PHAssetCreationRequest.forAsset()
+                let creationRequest = PHAssetCreationRequest.forAsset()
                 let options = PHAssetResourceCreationOptions()
                 options.originalFilename = originalFilename
-                request.addResource(with: resourceType, data: data, options: options)
+                creationRequest.addResource(with: resourceType, data: data, options: options)
+
+                if let album, let placeholder = creationRequest.placeholderForCreatedAsset {
+                    let albumChange = PHAssetCollectionChangeRequest(for: album)
+                    albumChange?.addAssets([placeholder] as NSArray)
+                }
             }) { success, error in
                 if success {
                     continuation.resume()
