@@ -43,8 +43,6 @@ final class PhotoLibraryManager {
     var batchProgress: Int = 0
     var batchTotal: Int = 0
     var isBatchProcessing: Bool = false
-    var batchSuccessCount: Int = 0
-    var batchFailCount: Int = 0
 
     // Thumbnail cache (thread-safe, auto-evicts under memory pressure)
     let thumbnailCache = NSCache<NSString, UIImage>()
@@ -775,27 +773,6 @@ final class PhotoLibraryManager {
     /// Returns true if user allowed the deletion, false if denied.
     func deleteOriginal(for pair: PhotoPair) async -> Bool {
         await deleteAssetWithResult(pair.asset)
-    }
-
-    func performBatchAction(_ action: SplitAction, on selectedPairs: [PhotoPair]) async -> (success: Int, failed: Int) {
-        isBatchProcessing = true
-        batchTotal = selectedPairs.count
-        batchProgress = 0
-        batchSuccessCount = 0
-        batchFailCount = 0
-
-        for pair in selectedPairs {
-            do {
-                try await performAction(action, on: pair)
-                batchSuccessCount += 1
-            } catch {
-                batchFailCount += 1
-            }
-            batchProgress += 1
-        }
-
-        isBatchProcessing = false
-        return (batchSuccessCount, batchFailCount)
     }
 
     // MARK: - EXIF Metadata
