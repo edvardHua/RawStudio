@@ -22,7 +22,9 @@ enum GalleryLayout: String {
 struct GalleryView: View {
     @Bindable var manager: PhotoLibraryManager
     var presetStore: RAWEditPresetStore
+    var tagStore: PhotoTagStore
     @State private var sourceFilter: SourceFilter = .all
+    @State private var tagFilter: PhotoTag? = nil
     @State private var layout: GalleryLayout = .list
     @State private var isSelecting = false
     @State private var selectedIDs: Set<String> = []
@@ -47,11 +49,16 @@ struct GalleryView: View {
     ]
 
     private var filteredPairs: [PhotoPair] {
+        let base: [PhotoPair]
         switch sourceFilter {
-        case .all:         return manager.pairs
-        case .rawJPGPairs: return manager.pairs.filter { $0.kind == .rawJpgPair }
-        case .rawOnly:     return manager.pairs.filter { $0.kind == .rawOnly }
+        case .all:         base = manager.pairs
+        case .rawJPGPairs: base = manager.pairs.filter { $0.kind == .rawJpgPair }
+        case .rawOnly:     base = manager.pairs.filter { $0.kind == .rawOnly }
         }
+        if let tag = tagFilter {
+            return base.filter { tagStore.tag(for: $0.id) == tag }
+        }
+        return base
     }
 
     private var navigationTitle: String {
@@ -131,7 +138,8 @@ struct GalleryView: View {
                     manager: manager,
                     pairs: filteredPairs,
                     startIndex: index,
-                    presetStore: presetStore
+                    presetStore: presetStore,
+                    tagStore: tagStore
                 )
             }
             .sheet(isPresented: $showAlbumPicker) {
@@ -269,6 +277,8 @@ struct GalleryView: View {
                     isActive: sourceFilter == .rawOnly
                 ) { sourceFilter = .rawOnly }
 
+                tagFilterCapsule
+
                 Spacer()
             }
             .padding(.horizontal, 16)
@@ -295,17 +305,74 @@ struct GalleryView: View {
         .buttonStyle(.plain)
     }
 
+    /// 顶部 Tag 筛选胶囊 — 第 4 个 pill，点开 Menu 选颜色
+    private var tagFilterCapsule: some View {
+        Menu {
+            Button {
+                tagFilter = nil
+            } label: {
+                Label {
+                    Text("\(String(localized: "All Tags")) · \(tagStore.tags.count)")
+                } icon: {
+                    Image(systemName: tagFilter == nil ? "checkmark" : "circle")
+                }
+            }
+            Divider()
+            ForEach(PhotoTag.allCases) { tag in
+                Button {
+                    tagFilter = tag
+                } label: {
+                    // Menu 会把 Label 的 foregroundStyle 改成系统色；用 palette 渲染 + Image 上着色才生效
+                    Label {
+                        Text("\(tag.label) · \(tagStore.count(for: tag))")
+                    } icon: {
+                        Image(systemName: tagFilter == tag ? "checkmark.circle.fill" : "circle.fill")
+                            .symbolRenderingMode(.palette)
+                            .foregroundStyle(tag.color)
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                if let t = tagFilter {
+                    // 用白边圆点确保在 accent 背景上（无论 accent 是否与 tag 同色）可见
+                    Circle()
+                        .fill(t.color)
+                        .frame(width: 10, height: 10)
+                        .overlay(Circle().stroke(.white, lineWidth: 1))
+                } else {
+                    Image(systemName: "tag")
+                        .font(.footnote)
+                }
+                Text(String(localized: "Tag"))
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(tagFilter == nil ? Color.primary : .white)
+            }
+            .padding(.horizontal, smallCapsulePadH)
+            .padding(.vertical, smallCapsulePadV)
+            .background(
+                tagFilter == nil
+                    ? AnyShapeStyle(.ultraThinMaterial)
+                    : AnyShapeStyle(Color.accentColor),
+                in: Capsule()
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
     // MARK: - Batch Action Capsules (Glass Style)
 
     private var batchActionCapsules: some View {
         HStack(spacing: 10) {
             switch sourceFilter {
             case .all:
+                tagCapsuleMenu
                 deleteCapsule { confirmBatchDelete() }
             case .rawJPGPairs, .rawOnly:
                 batchCapsule(icon: "square.and.arrow.up", label: "Export") {
                     showExportSheet = true
                 }
+                tagCapsuleMenu
                 deleteCapsule { confirmBatchDelete() }
             }
             Spacer()
@@ -340,6 +407,44 @@ struct GalleryView: View {
                     .lineLimit(1)
             }
             .foregroundStyle(.red)
+            .padding(.horizontal, capsulePadH)
+            .padding(.vertical, capsulePadV)
+            .background(.ultraThinMaterial, in: Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// 批量打标胶囊 — 选中模式下出现
+    private var tagCapsuleMenu: some View {
+        Menu {
+            ForEach(PhotoTag.allCases) { tag in
+                Button {
+                    tagStore.setTag(tag, for: Array(selectedIDs))
+                } label: {
+                    // 同 tagFilterCapsule：palette 渲染 + 在 Image 上着色，避免被 Menu 系统色覆盖
+                    Label {
+                        Text(tag.label)
+                    } icon: {
+                        Image(systemName: "circle.fill")
+                            .symbolRenderingMode(.palette)
+                            .foregroundStyle(tag.color)
+                    }
+                }
+            }
+            Divider()
+            Button(role: .destructive) {
+                tagStore.setTag(nil, for: Array(selectedIDs))
+            } label: {
+                Label(String(localized: "Clear Tag"), systemImage: "xmark.circle")
+            }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "tag")
+                    .font(.subheadline.weight(.medium))
+                Text(String(localized: "Tag"))
+                    .font(.footnote.weight(.medium))
+                    .lineLimit(1)
+            }
             .padding(.horizontal, capsulePadH)
             .padding(.vertical, capsulePadV)
             .background(.ultraThinMaterial, in: Capsule())
@@ -407,7 +512,8 @@ struct GalleryView: View {
                             isSelected: selectedIDs.contains(pair.id),
                             onToggleSelect: { toggleSelect(pair.id) },
                             manager: manager,
-                            presetStore: presetStore
+                            presetStore: presetStore,
+                            tagStore: tagStore
                         )
                         .contentShape(Rectangle())
                         .onTapGesture { handleTap(pair) }
@@ -443,7 +549,8 @@ struct GalleryView: View {
                                 isSelecting: isSelecting,
                                 isSelected: selectedIDs.contains(pair.id),
                                 manager: manager,
-                                presetStore: presetStore
+                                presetStore: presetStore,
+                                tagStore: tagStore
                             )
                             .onTapGesture { handleTap(pair) }
                         }

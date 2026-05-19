@@ -6,6 +6,7 @@ struct PhotoGridItemView: View {
     let isSelected: Bool
     var manager: PhotoLibraryManager?
     var presetStore: RAWEditPresetStore
+    var tagStore: PhotoTagStore
 
     @State private var thumbnail: UIImage?
     @Environment(\.displayScale) private var displayScale
@@ -38,6 +39,12 @@ struct PhotoGridItemView: View {
                         }
                         if presetStore.hasUsedPreset(for: pair.id) {
                             indicatorBadge(systemName: "wand.and.stars")
+                        }
+                        if let t = tagStore.tag(for: pair.id) {
+                            Circle()
+                                .fill(t.color)
+                                .frame(width: 10, height: 10)
+                                .overlay(Circle().stroke(.white.opacity(0.6), lineWidth: 0.5))
                         }
 
                         // Selection checkbox
