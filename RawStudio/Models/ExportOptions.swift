@@ -11,8 +11,14 @@ struct ExportOptions: Equatable {
         case heic
     }
 
+    enum AlbumTarget: Equatable {
+        case none
+        case createNew(name: String)
+        case existing(id: String)    // PHAssetCollection.localIdentifier
+    }
+
     var source: Source
     var format: Format
     var useHDR: Bool
-    var newAlbumName: String?    // nil = 不创建相册
+    var album: AlbumTarget
 }

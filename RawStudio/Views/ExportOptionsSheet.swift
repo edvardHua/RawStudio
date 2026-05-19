@@ -64,14 +64,17 @@ struct ExportOptionsSheet: View {
                     // Primary button
                     Button {
                         let trimmed = albumName.trimmingCharacters(in: .whitespacesAndNewlines)
-                        let finalAlbumName: String? = saveToNewAlbum
-                            ? (trimmed.isEmpty ? Self.defaultAlbumName() : trimmed)
-                            : nil
+                        let albumTarget: ExportOptions.AlbumTarget
+                        if saveToNewAlbum {
+                            albumTarget = .createNew(name: trimmed.isEmpty ? Self.defaultAlbumName() : trimmed)
+                        } else {
+                            albumTarget = .none
+                        }
                         onConfirm(ExportOptions(
                             source: filter == .rawOnly ? .fromRaw : source,
                             format: format,
                             useHDR: useHDR,
-                            newAlbumName: finalAlbumName
+                            album: albumTarget
                         ))
                     } label: {
                         Text("Export \(selectedCount) Photos")

@@ -727,12 +727,23 @@ final class PhotoLibraryManager {
 
         var album: PHAssetCollection? = nil
         var albumError: String? = nil
-        if let name = options.newAlbumName, !name.isEmpty {
-            do {
-                album = try await createAlbum(name: name)
-            } catch {
-                albumError = error.localizedDescription
-                // 不中止；继续导出但不加入相册
+        switch options.album {
+        case .none:
+            break
+        case .createNew(let name):
+            let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                do {
+                    album = try await createAlbum(name: trimmed)
+                } catch {
+                    albumError = error.localizedDescription
+                    // 不中止；继续导出但不加入相册
+                }
+            }
+        case .existing(let id):
+            album = PHAssetCollection.fetchAssetCollections(withLocalIdentifiers: [id], options: nil).firstObject
+            if album == nil {
+                albumError = String(localized: "Selected album not found")
             }
         }
 
