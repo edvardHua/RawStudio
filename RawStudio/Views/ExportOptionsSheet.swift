@@ -62,10 +62,10 @@ struct ExportOptionsSheet: View {
                     }
 
                     // Save To
-                    sectionGroup(title: String(localized: "Save To")) {
+                    sectionGroup(title: String(localized: "Save To Album")) {
                         VStack(spacing: 12) {
                             Picker("", selection: $albumMode) {
-                                Text("None").tag(AlbumMode.none)
+                                Text("Default").tag(AlbumMode.none)
                                 Text("New").tag(AlbumMode.createNew)
                                 Text("Existing").tag(AlbumMode.existing)
                             }

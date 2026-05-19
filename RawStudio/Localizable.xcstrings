@@ -1381,6 +1381,16 @@
         }
       }
     },
+    "Save To Album" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "保存到相簿"
+          }
+        }
+      }
+    },
     "Successfully exported %lld, failed %lld." : {
       "localizations" : {
         "zh-Hans" : {
@@ -1407,6 +1417,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "选择相簿"
+          }
+        }
+      }
+    },
+    "Default" : {
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "默认"
           }
         }
       }

@@ -889,6 +889,8 @@ final class PhotoLibraryManager {
                 let options = PHAssetResourceCreationOptions()
                 options.originalFilename = originalFilename
                 creationRequest.addResource(with: resourceType, data: data, options: options)
+                // 用导出时刻作为 Photos 库的 creationDate，让新图出现在时间线最顶端、便于查找
+                creationRequest.creationDate = Date()
 
                 if let album, let placeholder = creationRequest.placeholderForCreatedAsset {
                     let albumChange = PHAssetCollectionChangeRequest(for: album)
