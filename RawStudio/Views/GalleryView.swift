@@ -498,7 +498,8 @@ struct GalleryView: View {
                             isSelected: selectedIDs.contains(pair.id),
                             onToggleSelect: { toggleSelect(pair.id) },
                             manager: manager,
-                            presetStore: presetStore
+                            presetStore: presetStore,
+                            tagStore: tagStore
                         )
                         .contentShape(Rectangle())
                         .onTapGesture { handleTap(pair) }
@@ -534,7 +535,8 @@ struct GalleryView: View {
                                 isSelecting: isSelecting,
                                 isSelected: selectedIDs.contains(pair.id),
                                 manager: manager,
-                                presetStore: presetStore
+                                presetStore: presetStore,
+                                tagStore: tagStore
                             )
                             .onTapGesture { handleTap(pair) }
                         }

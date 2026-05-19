@@ -7,6 +7,7 @@ struct PhotoCardView: View {
     let onToggleSelect: () -> Void
     var manager: PhotoLibraryManager?
     var presetStore: RAWEditPresetStore
+    var tagStore: PhotoTagStore
 
     @State private var thumbnail: UIImage?
     @Environment(\.displayScale) private var displayScale
@@ -20,6 +21,7 @@ struct PhotoCardView: View {
 
     var body: some View {
         let _ = presetStore.changeCounter   // 订阅刷新触发
+        let _ = tagStore.changeCounter
         HStack(spacing: 12) {
             if isSelecting {
                 Button(action: onToggleSelect) {
@@ -58,6 +60,12 @@ struct PhotoCardView: View {
                     }
                     if presetStore.hasUsedPreset(for: pair.id) {
                         indicatorBadge(systemName: "wand.and.stars")
+                    }
+                    if let t = tagStore.tag(for: pair.id) {
+                        Circle()
+                            .fill(t.color)
+                            .frame(width: 10, height: 10)
+                            .overlay(Circle().stroke(.white.opacity(0.6), lineWidth: 0.5))
                     }
                 }
             }
