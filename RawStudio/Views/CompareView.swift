@@ -252,6 +252,36 @@ struct CompareView: View {
                     .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8))
                 }
                 Spacer()
+                tagPickerRow
+            }
+        }
+    }
+
+    /// 5 色 inline tag picker — 在 formatSwitcher 右侧，双点 toggle 取消
+    @ViewBuilder
+    private var tagPickerRow: some View {
+        if let pair = currentPair {
+            HStack(spacing: 6) {
+                ForEach(PhotoTag.allCases) { tag in
+                    let isActive = tagStore.tag(for: pair.id) == tag
+                    Button {
+                        if isActive {
+                            tagStore.setTag(nil, for: pair.id)
+                        } else {
+                            tagStore.setTag(tag, for: pair.id)
+                        }
+                    } label: {
+                        Circle()
+                            .fill(tag.color)
+                            .frame(width: 22, height: 22)
+                            .overlay(
+                                Circle()
+                                    .stroke(.white, lineWidth: isActive ? 3 : 0.5)
+                            )
+                            .padding(4)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
     }
@@ -340,16 +370,12 @@ struct CompareView: View {
                     actionDivider
                     actionItem(icon: "sun.max.fill", label: "HDR JPEG") { exportUltraHDR() }
                     actionDivider
-                    tagMenuButton
-                    actionDivider
                     actionItem(icon: "slider.horizontal.3", label: "Edit") { openEditor() }
 
                 case .rawJpgPair:
                     actionItem(icon: "square.and.arrow.down", label: "Save JPG") { performAction(.keepJPG) }
                     actionDivider
                     actionItem(icon: "square.and.arrow.down.fill", label: "Save RAW") { performAction(.keepRAW) }
-                    actionDivider
-                    tagMenuButton
                     actionDivider
                     actionItem(icon: "slider.horizontal.3", label: "Edit") { openEditor() }
                     actionDivider
@@ -361,8 +387,6 @@ struct CompareView: View {
                         actionItem(icon: "sun.max.fill", label: "HDR JPEG") { exportUltraHDRFromImage() }
                         actionDivider
                     }
-                    tagMenuButton
-                    actionDivider
                     actionItem(icon: "slider.horizontal.3", label: "Edit") { openEditor() }
                 }
             }
@@ -371,45 +395,6 @@ struct CompareView: View {
         .padding(.horizontal, 4)
         .frame(maxWidth: .infinity)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-    }
-
-    private var tagMenuButton: some View {
-        Menu {
-            ForEach(PhotoTag.allCases) { tag in
-                Button {
-                    if let pair = currentPair {
-                        tagStore.setTag(tag, for: pair.id)
-                    }
-                } label: {
-                    Label(tag.label, systemImage: "circle.fill")
-                        .foregroundStyle(tag.color)
-                }
-            }
-            Divider()
-            Button(role: .destructive) {
-                if let pair = currentPair {
-                    tagStore.setTag(nil, for: pair.id)
-                }
-            } label: {
-                Label(String(localized: "Clear Tag"), systemImage: "xmark.circle")
-            }
-        } label: {
-            VStack(spacing: 3) {
-                if let pair = currentPair, let t = tagStore.tag(for: pair.id) {
-                    Circle()
-                        .fill(t.color)
-                        .frame(width: 18, height: 18)
-                        .overlay(Circle().stroke(.white.opacity(0.6), lineWidth: 0.5))
-                } else {
-                    Image(systemName: "tag")
-                        .font(.body)
-                }
-                Text(String(localized: "Tag"))
-                    .font(.caption2)
-            }
-            .foregroundStyle(.primary.opacity(0.85))
-            .frame(maxWidth: .infinity)
-        }
     }
 
     private func actionItem(icon: String, label: String, action: @escaping () -> Void) -> some View {
