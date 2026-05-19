@@ -19,6 +19,7 @@ struct CompareView: View {
     @State private var processingMessage = ""
     @State private var showingRAW = false
     @State private var zoomState = ZoomState()
+    @State private var zoomResetVersion: Int = 0
     @State private var showToast = false
     @State private var toastMessage = ""
     @State private var errorMessage: String?
@@ -89,6 +90,7 @@ struct CompareView: View {
                         ZoomableImageView(
                             image: image,
                             zoomState: $zoomState,
+                            resetVersion: zoomResetVersion,
                             onSwipeLeft: {
                                 if !isProcessing && currentIndex < pairs.count - 1 {
                                     navigateTo(currentIndex + 1)
@@ -240,11 +242,11 @@ struct CompareView: View {
                     // Segmented control for JPG/RAW
                     HStack(spacing: 0) {
                         formatTab(label: "JPG", isActive: !showingRAW) {
-                            zoomState = ZoomState()
+                            zoomResetVersion += 1
                             showingRAW = false
                         }
                         formatTab(label: "RAW", isActive: showingRAW) {
-                            zoomState = ZoomState()
+                            zoomResetVersion += 1
                             showingRAW = true
                         }
                     }
@@ -505,7 +507,7 @@ struct CompareView: View {
             case .rawJpgPair: showingRAW = true     // 维持原默认行为
             case .jpgOnly:    showingRAW = false
             }
-            zoomState = ZoomState()
+            zoomResetVersion += 1
         } catch {
             errorMessage = error.localizedDescription
             showError = true

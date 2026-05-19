@@ -8,7 +8,8 @@ struct ZoomState: Equatable {
 
 struct ZoomableImageView: UIViewRepresentable {
     let image: UIImage
-    @Binding var zoomState: ZoomState
+    @Binding var zoomState: ZoomState   // OUTPUT ONLY — scrollview writes up; nothing writes down
+    let resetVersion: Int               // 每 +1 触发一次 zoom 重置（外部命令）
     var onSwipeLeft: (() -> Void)?
     var onSwipeRight: (() -> Void)?
 
@@ -20,40 +21,41 @@ struct ZoomableImageView: UIViewRepresentable {
         view.onSwipeLeft = onSwipeLeft
         view.onSwipeRight = onSwipeRight
         view.setImage(image)
+        context.coordinator.lastSeenResetVersion = resetVersion
         return view
     }
 
     func updateUIView(_ view: ZoomableScrollView, context: Context) {
-        let imageChanged = view.currentImage !== image
-        if imageChanged {
-            view.setImage(image)
+        if view.currentImage !== image {
+            view.setImage(image)   // setImage 内部已置 zoomScale = 1.0
+            context.coordinator.lastSeenResetVersion = resetVersion
+            view.onSwipeLeft = onSwipeLeft
+            view.onSwipeRight = onSwipeRight
+            return
         }
-
         view.onSwipeLeft = onSwipeLeft
         view.onSwipeRight = onSwipeRight
-
-        // Sync from binding (driven externally, e.g. when switching RAW/JPG)
-        if !context.coordinator.isUserDriving && !imageChanged {
-            view.applyZoomState(zoomState)
+        if resetVersion != context.coordinator.lastSeenResetVersion {
+            context.coordinator.lastSeenResetVersion = resetVersion
+            view.resetZoom(animated: true)
         }
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(zoomState: $zoomState)
+        Coordinator(zoomState: $zoomState, initialResetVersion: resetVersion)
     }
 
     class Coordinator {
         @Binding var zoomState: ZoomState
-        var isUserDriving = false
+        var lastSeenResetVersion: Int
 
-        init(zoomState: Binding<ZoomState>) {
+        init(zoomState: Binding<ZoomState>, initialResetVersion: Int) {
             _zoomState = zoomState
+            self.lastSeenResetVersion = initialResetVersion
         }
 
         func handleZoomStateChanged(_ state: ZoomState) {
-            isUserDriving = true
             zoomState = state
-            DispatchQueue.main.async { self.isUserDriving = false }
         }
     }
 }
@@ -112,6 +114,16 @@ class ZoomableScrollView: UIScrollView, UIScrollViewDelegate {
         layoutIfNeeded()
     }
 
+    /// 外部命令式 reset；mid-gesture 时跳过避免抢用户输入
+    func resetZoom(animated: Bool) {
+        if isZooming { return }
+        if let pinch = pinchGestureRecognizer,
+           pinch.state == .began || pinch.state == .changed {
+            return
+        }
+        setZoomScale(1.0, animated: animated)
+    }
+
     override func layoutSubviews() {
         super.layoutSubviews()
         guard let image = currentImage, bounds.size != .zero else { return }
@@ -121,7 +133,6 @@ class ZoomableScrollView: UIScrollView, UIScrollViewDelegate {
 
         guard imageSize.width > 0 && imageSize.height > 0 else { return }
 
-        // Calculate aspect-fit size
         let widthRatio = boundsSize.width / imageSize.width
         let heightRatio = boundsSize.height / imageSize.height
         let fitScale = min(widthRatio, heightRatio)
@@ -129,7 +140,6 @@ class ZoomableScrollView: UIScrollView, UIScrollViewDelegate {
         let fitWidth = imageSize.width * fitScale
         let fitHeight = imageSize.height * fitScale
 
-        // Set imageView frame to the fitted size
         imageView.frame = CGRect(
             x: 0, y: 0,
             width: fitWidth,
@@ -137,7 +147,6 @@ class ZoomableScrollView: UIScrollView, UIScrollViewDelegate {
         )
         contentSize = CGSize(width: fitWidth, height: fitHeight)
 
-        // Center the image
         centerImageView()
     }
 
@@ -158,11 +167,6 @@ class ZoomableScrollView: UIScrollView, UIScrollViewDelegate {
         }
 
         imageView.frame = frameToCenter
-    }
-
-    func applyZoomState(_ state: ZoomState) {
-        zoomScale = state.scale
-        contentOffset = state.offset
     }
 
     // MARK: - UIScrollViewDelegate
