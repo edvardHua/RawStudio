@@ -140,6 +140,15 @@ struct CompareView: View {
         .navigationTitle("\(currentIndex + 1) / \(pairs.count)")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                if !isProcessing {
+                    Button { dismiss() } label: {
+                        Image(systemName: "chevron.left")
+                            .font(.body.weight(.semibold))
+                            .frame(width: iconButtonSize, height: iconButtonSize)
+                    }
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 if !isLoadingImages && !isProcessing {
                     HStack(spacing: 2) {
@@ -167,7 +176,7 @@ struct CompareView: View {
         .task {
             await loadImages()
         }
-        .navigationBarBackButtonHidden(isProcessing)
+        .navigationBarBackButtonHidden(true)   // SwiftUI swipe-back is tied to back-button visibility; hide both → swipe-back disabled, custom chevron handles tap-back
         .sheet(isPresented: $showShareSheet) {
             if let image = currentDisplayImage {
                 ShareSheet(items: [image])
