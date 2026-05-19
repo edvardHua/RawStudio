@@ -327,7 +327,11 @@ struct GalleryView: View {
         } label: {
             HStack(spacing: 4) {
                 if let t = tagFilter {
-                    Circle().fill(t.color).frame(width: 10, height: 10)
+                    // 用白边圆点确保在 accent 背景上（无论 accent 是否与 tag 同色）可见
+                    Circle()
+                        .fill(t.color)
+                        .frame(width: 10, height: 10)
+                        .overlay(Circle().stroke(.white, lineWidth: 1))
                 } else {
                     Image(systemName: "tag")
                         .font(.footnote)
