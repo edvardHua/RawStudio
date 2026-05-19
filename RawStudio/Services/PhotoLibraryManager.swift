@@ -611,8 +611,12 @@ final class PhotoLibraryManager {
 
         // 注入原 EXIF
         let exifProperties = Self.propertiesWithNormalizedOrientation(Self.extractImageProperties(from: rawData))
-        let rawFileData = try Data(contentsOf: tempURL)
-        let finalData = Self.injectMetadata(into: tempURL, properties: exifProperties) ?? rawFileData
+        let finalData: Data
+        if let injected = Self.injectMetadata(into: tempURL, properties: exifProperties) {
+            finalData = injected
+        } else {
+            finalData = try Data(contentsOf: tempURL)
+        }
 
         let baseName = (rawResource.originalFilename as NSString).deletingPathExtension
         let outName = baseName + "." + (format == .jpg ? "jpg" : "heic")
@@ -654,6 +658,11 @@ final class PhotoLibraryManager {
         }
 
         // 路径 D：需要转码（HEIC↔JPG），HDR fallback 到 SDR
+        // 注：罕见的"HDR JPEG → HEIC"路径会在此降级（HDR 信息丢失）；spec 已接受 best-effort。
+        // 拒绝非 JPEG/HEIC 源（PNG/AVIF 等），避免静默格式转换。
+        guard sourceIsJPEG || sourceIsHEIC else {
+            throw SplitError.extractionFailed("Unsupported source format: \(sourceUTI)")
+        }
         guard let ciImage = CIImage(data: data) else {
             throw SplitError.extractionFailed("Cannot decode source image")
         }
@@ -674,8 +683,12 @@ final class PhotoLibraryManager {
         }
 
         let exifProperties = Self.propertiesWithNormalizedOrientation(Self.extractImageProperties(from: data))
-        let fileData = try Data(contentsOf: tempURL)
-        let finalData = Self.injectMetadata(into: tempURL, properties: exifProperties) ?? fileData
+        let finalData: Data
+        if let injected = Self.injectMetadata(into: tempURL, properties: exifProperties) {
+            finalData = injected
+        } else {
+            finalData = try Data(contentsOf: tempURL)
+        }
 
         let baseName = (jpgResource.originalFilename as NSString).deletingPathExtension
         let outName = baseName + "." + (format == .jpg ? "jpg" : "heic")
