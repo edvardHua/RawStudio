@@ -66,6 +66,9 @@ class ZoomableScrollView: UIScrollView, UIScrollViewDelegate {
 
     private let imageView = UIImageView()
     private(set) var currentImage: UIImage?
+    /// 上次 fit 配置时的 bounds — 仅 bounds 变化才重算 imageView.frame / contentSize，
+    /// 避免在 pinch 期间被 layoutSubviews 重置导致缩放视觉弹回 1×。
+    private var lastConfiguredBounds: CGSize = .zero
     var zoomStateChanged: ((ZoomState) -> Void)?
     var onSwipeLeft: (() -> Void)?
     var onSwipeRight: (() -> Void)?
@@ -110,6 +113,7 @@ class ZoomableScrollView: UIScrollView, UIScrollViewDelegate {
         currentImage = image
         imageView.image = image
         zoomScale = 1.0
+        lastConfiguredBounds = .zero   // 强制下一次 layout 重新 fit
         setNeedsLayout()
         layoutIfNeeded()
     }
@@ -128,6 +132,16 @@ class ZoomableScrollView: UIScrollView, UIScrollViewDelegate {
         super.layoutSubviews()
         guard let image = currentImage, bounds.size != .zero else { return }
 
+        if lastConfiguredBounds != bounds.size {
+            configureFit(for: image)
+            lastConfiguredBounds = bounds.size
+        }
+        centerImageView()
+    }
+
+    /// 按 fit 比例配置 imageView.frame 和 contentSize；只在 setImage / bounds 变化时调一次，
+    /// pinch 期间 UIScrollView 会自己管 contentSize 和 imageView transform —— 这里不要碰。
+    private func configureFit(for image: UIImage) {
         let boundsSize = bounds.size
         let imageSize = image.size
 
@@ -140,14 +154,8 @@ class ZoomableScrollView: UIScrollView, UIScrollViewDelegate {
         let fitWidth = imageSize.width * fitScale
         let fitHeight = imageSize.height * fitScale
 
-        imageView.frame = CGRect(
-            x: 0, y: 0,
-            width: fitWidth,
-            height: fitHeight
-        )
+        imageView.frame = CGRect(x: 0, y: 0, width: fitWidth, height: fitHeight)
         contentSize = CGSize(width: fitWidth, height: fitHeight)
-
-        centerImageView()
     }
 
     private func centerImageView() {
