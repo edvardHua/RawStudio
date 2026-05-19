@@ -257,11 +257,12 @@ struct CompareView: View {
         }
     }
 
-    /// 5 色 inline tag picker — 在 formatSwitcher 右侧，双点 toggle 取消
+    /// 5 色 inline tag picker — 在 formatSwitcher 右侧；选中态用 ✓ + 放大 + 阴影三重信号
+    /// 触控区固定 36pt 防止尺寸切换时位置抖动；点已选中色 = 取消（toggle）
     @ViewBuilder
     private var tagPickerRow: some View {
         if let pair = currentPair {
-            HStack(spacing: 6) {
+            HStack(spacing: 4) {
                 ForEach(PhotoTag.allCases) { tag in
                     let isActive = tagStore.tag(for: pair.id) == tag
                     Button {
@@ -271,14 +272,31 @@ struct CompareView: View {
                             tagStore.setTag(tag, for: pair.id)
                         }
                     } label: {
-                        Circle()
-                            .fill(tag.color)
-                            .frame(width: 22, height: 22)
-                            .overlay(
-                                Circle()
-                                    .stroke(.white, lineWidth: isActive ? 3 : 0.5)
-                            )
-                            .padding(4)
+                        ZStack {
+                            Circle()
+                                .fill(tag.color)
+                                .frame(
+                                    width: isActive ? 28 : 22,
+                                    height: isActive ? 28 : 22
+                                )
+                                .overlay(
+                                    Circle()
+                                        .stroke(.white, lineWidth: isActive ? 2 : 0.5)
+                                )
+                                .shadow(
+                                    color: isActive ? .black.opacity(0.35) : .clear,
+                                    radius: isActive ? 3 : 0,
+                                    y: isActive ? 1 : 0
+                                )
+                            if isActive {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundStyle(.white)
+                            }
+                        }
+                        .frame(width: 36, height: 36)
+                        .contentShape(Rectangle())
+                        .animation(.easeInOut(duration: 0.15), value: isActive)
                     }
                     .buttonStyle(.plain)
                 }
