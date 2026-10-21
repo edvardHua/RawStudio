@@ -8,7 +8,15 @@
 
 /* Begin PBXFileReference section */
 		950775CE2F829396003930BE /* RawStudio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RawStudio.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000001 /* RawStudioMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RawStudioMacApp.swift; sourceTree = "<group>"; };
+		A10000000000000000000002 /* MacFolderHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacFolderHomeView.swift; sourceTree = "<group>"; };
+		A10000000000000000000003 /* RawStudio-macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "RawStudio-macOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXBuildFile section */
+		A10000000000000000000004 /* RawStudioMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000001 /* RawStudioMacApp.swift */; };
+		A10000000000000000000005 /* MacFolderHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* MacFolderHomeView.swift */; };
+/* End PBXBuildFile section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		950775D02F829396003930BE /* RawStudio */ = {
@@ -26,6 +34,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A10000000000000000000012 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -33,6 +42,7 @@
 			isa = PBXGroup;
 			children = (
 				950775D02F829396003930BE /* RawStudio */,
+				A10000000000000000000006 /* macOS */,
 				950775CF2F829396003930BE /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,8 +51,18 @@
 			isa = PBXGroup;
 			children = (
 				950775CE2F829396003930BE /* RawStudio.app */,
+				A10000000000000000000003 /* RawStudio-macOS.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		A10000000000000000000006 /* macOS */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000001 /* RawStudioMacApp.swift */,
+				A10000000000000000000002 /* MacFolderHomeView.swift */,
+			);
+			path = macOS;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -68,6 +88,21 @@
 			);
 			productName = RawStudio;
 			productReference = 950775CE2F829396003930BE /* RawStudio.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A10000000000000000000010 /* RawStudio-macOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A10000000000000000000020 /* Build configuration list for PBXNativeTarget "RawStudio-macOS" */;
+			buildPhases = (
+				A10000000000000000000011 /* Sources */,
+				A10000000000000000000012 /* Frameworks */,
+				A10000000000000000000013 /* Resources */,
+			);
+			buildRules = ();
+			dependencies = ();
+			name = "RawStudio-macOS";
+			productName = "RawStudio-macOS";
+			productReference = A10000000000000000000003 /* RawStudio-macOS.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -101,6 +136,7 @@
 			projectRoot = "";
 			targets = (
 				950775CD2F829396003930BE /* RawStudio */,
+				A10000000000000000000010 /* RawStudio-macOS */,
 			);
 		};
 /* End PBXProject section */
@@ -113,7 +149,9 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A10000000000000000000013 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXResourcesBuildPhase section */
+
 
 /* Begin PBXSourcesBuildPhase section */
 		950775CA2F829396003930BE /* Sources */ = {
@@ -123,6 +161,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A10000000000000000000011 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000004 /* RawStudioMacApp.swift in Sources */, A10000000000000000000005 /* MacFolderHomeView.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
@@ -317,6 +356,8 @@
 			};
 			name = Release;
 		};
+		A10000000000000000000021 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = { CODE_SIGN_STYLE = Automatic; CODE_SIGN_ENTITLEMENTS = macOS/RawStudioMac.entitlements; CURRENT_PROJECT_VERSION = 1; GENERATE_INFOPLIST_FILE = YES; MACOSX_DEPLOYMENT_TARGET = 14.0; PRODUCT_BUNDLE_IDENTIFIER = com.edz.RawStudio.macOS; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = macosx; SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor; SWIFT_VERSION = 5.0; SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES; ENABLE_APP_SANDBOX = YES; }; name = Debug; };
+		A10000000000000000000022 /* Release */ = {isa = XCBuildConfiguration; buildSettings = { CODE_SIGN_STYLE = Automatic; CODE_SIGN_ENTITLEMENTS = macOS/RawStudioMac.entitlements; CURRENT_PROJECT_VERSION = 1; GENERATE_INFOPLIST_FILE = YES; MACOSX_DEPLOYMENT_TARGET = 14.0; PRODUCT_BUNDLE_IDENTIFIER = com.edz.RawStudio.macOS; PRODUCT_NAME = "$(TARGET_NAME)"; SDKROOT = macosx; SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor; SWIFT_VERSION = 5.0; SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES; ENABLE_APP_SANDBOX = YES; }; name = Release; };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -338,6 +379,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		A10000000000000000000020 /* Build configuration list for PBXNativeTarget "RawStudio-macOS" */ = {isa = XCConfigurationList; buildConfigurations = (A10000000000000000000021 /* Debug */, A10000000000000000000022 /* Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 /* End XCConfigurationList section */
 	};
 	rootObject = 950775C62F829396003930BE /* Project object */;
