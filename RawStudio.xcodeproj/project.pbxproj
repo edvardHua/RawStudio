@@ -11,11 +11,15 @@
 		A10000000000000000000001 /* RawStudioMacApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RawStudioMacApp.swift; sourceTree = "<group>"; };
 		A10000000000000000000002 /* MacFolderHomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacFolderHomeView.swift; sourceTree = "<group>"; };
 		A10000000000000000000003 /* RawStudio-macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "RawStudio-macOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000007 /* FolderAccessStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderAccessStore.swift; sourceTree = "<group>"; };
+		A10000000000000000000008 /* FolderPhotoScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderPhotoScanner.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXBuildFile section */
 		A10000000000000000000004 /* RawStudioMacApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000001 /* RawStudioMacApp.swift */; };
 		A10000000000000000000005 /* MacFolderHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* MacFolderHomeView.swift */; };
+		A10000000000000000000009 /* FolderAccessStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000007 /* FolderAccessStore.swift */; };
+		A1000000000000000000000A /* FolderPhotoScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000008 /* FolderPhotoScanner.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -61,6 +65,8 @@
 			children = (
 				A10000000000000000000001 /* RawStudioMacApp.swift */,
 				A10000000000000000000002 /* MacFolderHomeView.swift */,
+				A10000000000000000000007 /* FolderAccessStore.swift */,
+				A10000000000000000000008 /* FolderPhotoScanner.swift */,
 			);
 			path = macOS;
 			sourceTree = "<group>";
@@ -161,7 +167,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		A10000000000000000000011 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000004 /* RawStudioMacApp.swift in Sources */, A10000000000000000000005 /* MacFolderHomeView.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
+		A10000000000000000000011 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000004 /* RawStudioMacApp.swift in Sources */, A10000000000000000000005 /* MacFolderHomeView.swift in Sources */, A10000000000000000000009 /* FolderAccessStore.swift in Sources */, A1000000000000000000000A /* FolderPhotoScanner.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
